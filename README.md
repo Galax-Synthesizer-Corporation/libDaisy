@@ -63,7 +63,7 @@ int main(void)
     midi.StartReceive();
     hw.StartAdc();
     hw.StartAudio(AudioCallback);
-    
+
     for(;;)
     {
         midi.Listen();
@@ -163,8 +163,8 @@ For the full license, read the [LICENSE](https://github.com/electro-smith/libdai
 
 A list of modifications to be made to the upstream libDaisy, specifically for Galax Balsam.
 
-* Add UART logger implementation
-* Update MIDI stack as necessary for sysex, clock input stuff
-* Integrate the NeoPixel driver code from Stephen
-* Change MIDI USB descriptor so MIDI device shows up as "Balsam" or similar (also maybe change USB PID, other attributes)
-* USB-B Bootloader
+- [x] Add UART logger implementation
+- [ ] Update MIDI stack as necessary for sysex, clock input stuff
+- [ ] Integrate the NeoPixel driver code from Stephen
+- [ ] Change MIDI USB descriptor so MIDI device shows up as "Balsam" or similar (also maybe change USB PID, other attributes)
+- [ ] USB-B Bootloader
