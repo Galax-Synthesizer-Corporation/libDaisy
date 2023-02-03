@@ -18,7 +18,7 @@ enum LoggerDestination
     LOGGER_INTERNAL, /**< internal USB port */
     LOGGER_EXTERNAL, /**< external USB port */
     LOGGER_SEMIHOST, /**< stdout */
-    LOGGER_USART_1,  /**< TTL serial over USART_1 */
+    LOGGER_UART_7,   /**< UART serial over UART_7 Tx (Pin D9) */
 };
 
 /** @brief Logging I/O underlying implementation
@@ -65,7 +65,7 @@ class LoggerImpl<LOGGER_INTERNAL>
     }
 
   protected:
-    /** USB Handle for CDC transfers 
+    /** USB Handle for CDC transfers
      */
     static UsbHandle usb_handle_;
 };
@@ -97,7 +97,7 @@ class LoggerImpl<LOGGER_EXTERNAL>
     }
 
   protected:
-    /** USB Handle for CDC transfers 
+    /** USB Handle for CDC transfers
      */
     static UsbHandle usb_handle_;
 };
@@ -123,7 +123,7 @@ class LoggerImpl<LOGGER_SEMIHOST>
 };
 
 template<>
-class LoggerImpl<LOGGER_USART_1>
+class LoggerImpl<LOGGER_UART_7>
 {
   public:
     /** Initialize logging destination
@@ -131,9 +131,9 @@ class LoggerImpl<LOGGER_USART_1>
     static void Init()
     {
         UartHandler::Config config;
-        config.periph        = UartHandler::Config::Peripheral::USART_1;
+        config.periph        = UartHandler::Config::Peripheral::UART_7;
         config.mode          = UartHandler::Config::Mode::TX;
-        config.pin_config.tx = Pin(PORTB, 6);
+        config.pin_config.tx = Pin(PORTB, 4);
         config.pin_config.rx = Pin(PORTX, 0);
         config.baudrate      = 115200;
         uart_handle_.Init(config);
