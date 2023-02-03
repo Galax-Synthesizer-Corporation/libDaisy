@@ -158,3 +158,13 @@ This allows for modification and reuse in both commercial and personal projects.
 It does not provide a warranty of any kind.
 
 For the full license, read the [LICENSE](https://github.com/electro-smith/libdaisy/blob/master/LICENSE) file in the root directory.
+
+## Galax / Balsam Modifications
+
+A list of modifications to be made to the upstream libDaisy, specifically for Galax Balsam.
+
+* Add UART logger implementation
+* Update MIDI stack as necessary for sysex, clock input stuff
+* Integrate the NeoPixel driver code from Stephen
+* Change MIDI USB descriptor so MIDI device shows up as "Balsam" or similar (also maybe change USB PID, other attributes)
+* USB-B Bootloader
