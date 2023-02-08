@@ -8,7 +8,7 @@
 
 namespace daisy
 {
-/** @brief USB Transport for MIDI 
+/** @brief USB Transport for MIDI
  *  @ingroup midi
  */
 class MidiUsbTransport
@@ -25,7 +25,10 @@ class MidiUsbTransport
             EXTERNAL
         };
 
-        Periph periph;
+        Periph   periph;
+        uint8_t  tx_busy_retry_count;
+
+        Config() : periph(INTERNAL), tx_busy_retry_count(3) {}
     };
 
     void Init(Config config);
