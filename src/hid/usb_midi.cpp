@@ -98,7 +98,7 @@ void MidiUsbTransport::Impl::Init(Config config)
 void MidiUsbTransport::Impl::Tx(uint8_t* buffer, size_t size)
 {
     UsbHandle::Result result;
-    int               attempt_count = config_.tx_busy_retry_count;
+    int               attempt_count = config_.tx_retry_count;
     bool              should_retry;
 
     MidiToUsb(buffer, size);
@@ -129,12 +129,13 @@ void MidiUsbTransport::Impl::UsbToMidi(uint8_t* buffer, uint8_t length)
     // Right now, Daisy only supports a single cable, so we don't
     // need to extract that value from the upper nibble
     uint8_t code_index = buffer[0] & 0xF;
-    if(code_index == 0x0 || code_index == 0x1 || code_index == 0xF)
+    if(code_index == 0x0 || code_index == 0x1)
     {
         // 0x0 and 0x1 are reserved codes, and if they come up,
         // there's probably been an error. *0xF indicates data is
         // sent one byte at a time, rather than in packets of four.
         // This functionality could be supported later.
+        // The single-byte mode does still come through as 32-bit messages
         return;
     }
 
