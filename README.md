@@ -166,5 +166,5 @@ A list of modifications to be made to the upstream libDaisy, specifically for Ga
 - [x] Add UART logger implementation
 - [ ] Update MIDI stack as necessary for sysex, clock input stuff
 - [ ] Integrate the NeoPixel driver code from Stephen
-- [ ] Change MIDI USB descriptor so MIDI device shows up as "Balsam" or similar (also maybe change USB PID, other attributes)
+- [x] Change MIDI USB descriptor so MIDI device shows up as "Balsam" or similar (also maybe change USB PID, other attributes)
 - [ ] USB-B Bootloader
