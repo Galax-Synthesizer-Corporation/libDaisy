@@ -7,7 +7,7 @@ static DMA_HandleTypeDef timhdma;
 
 /** Pin Mappings:
      *  TODO: Make a map
-     * 
+     *
      *  TIM2 CH1 - PA0 (AF1), PA5 (AF1)
      *  TIM2 CH2 - PA1 (AF1), PB3 (AF1)
      *  TIM2 CH3 - PA2 (AF1), PB10 (AF1)
@@ -24,7 +24,7 @@ static DMA_HandleTypeDef timhdma;
      *  TIM5 CH2 - PA1 (AF2), PH11 (AF2)
      *  TIM5 CH3 - PA2 (AF2), PH12 (AF2)
      *  TIM5 CH4 - PA3 (AF2), PI0 (AF2)
-     * 
+     *
      *  And without a map:
      *  TIM2 ChN (AF1)
      *  TIM3 ChN (AF2)
@@ -32,7 +32,7 @@ static DMA_HandleTypeDef timhdma;
      *  TIM5 ChN (AF2)
     */
 
-/** Sets the instance of the HAL TIM Handle based on the values in the Daisy struct 
+/** Sets the instance of the HAL TIM Handle based on the values in the Daisy struct
  *  This also returns the AF value for a given timer (can be used for GPIO init).
  */
 static uint32_t SetInstance(TIM_HandleTypeDef*              tim,
@@ -131,7 +131,7 @@ static TIM_HandleTypeDef               globaltim;
 TimChannel::EndTransmissionFunctionPtr globalcb;
 void*                                  globalcb_context;
 
-void TimChannel::StartDma(void*                                  data,
+void TimChannel::StartDma(uint32_t*                              data,
                           size_t                                 size,
                           TimChannel::EndTransmissionFunctionPtr callback,
                           void*                                  cb_context)
@@ -229,6 +229,7 @@ void TimChannel::StartDma(void*                                  data,
     if(HAL_DMA_Init(&timhdma) != HAL_OK)
     {
         // something bad
+        asm("bkpt 255");
     }
     SetInstance(&globaltim, cfg_.tim->GetConfig().periph);
     switch(cfg_.chn)
@@ -247,7 +248,7 @@ void TimChannel::StartDma(void*                                  data,
             break;
     }
     HAL_TIM_PWM_Start_DMA(
-        &globaltim, GetHalChannel(cfg_.chn), (uint32_t*)data, size);
+        &globaltim, GetHalChannel(cfg_.chn), data, size);
 }
 
 

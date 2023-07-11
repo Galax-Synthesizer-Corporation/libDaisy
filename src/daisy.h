@@ -55,6 +55,7 @@
 #include "dev/neopixel.h"
 #include "dev/neotrellis.h"
 #include "dev/icm20948.h"
+#include "dev/ws2812.h"
 #include "ui/ButtonMonitor.h"
 #include "ui/PotMonitor.h"
 #include "ui/UI.h"

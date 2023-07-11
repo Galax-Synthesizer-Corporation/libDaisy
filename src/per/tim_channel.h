@@ -1,19 +1,23 @@
+#pragma once
+#ifndef DSY_TIM_CHANNEL_H
+#define DSY_TIM_CHANNEL_H
+
 #include "daisy_core.h"
 #include "tim.h"
 
 /** Some notes as I set stuff up:
- *  
- *  The HAL_TIM_Base_Init() seems to cover everything we need, 
+ *
+ *  The HAL_TIM_Base_Init() seems to cover everything we need,
  *  everything for the "channel" I/O happens via the MspInit HAL callbacks
  *  Since we'll be handling these post-init, on channel-by-channel option
  *  we can probably avoid doing the {function}Init stuff, and populating any MspInit
- *  
- *  Also, I'm including all of the modes here for now, but I'm really focused on 
- *  implementing PWM (via DMA). So I will do all of the implementation for that, 
+ *
+ *  Also, I'm including all of the modes here for now, but I'm really focused on
+ *  implementing PWM (via DMA). So I will do all of the implementation for that,
  *  and then see what doing IC, OC, and ONEPULSE would look like.
- * 
+ *
  *  also we'll _probably_ have to do a pimpl, but we'll see what we can do without one for the moment.
- * 
+ *
  */
 
 namespace daisy
@@ -72,7 +76,7 @@ class TimChannel
     /** Stops the PWM output on the given channel's pin */
     void Stop();
 
-    /** Sets the immediate PWM value, based on the current TIM period. 
+    /** Sets the immediate PWM value, based on the current TIM period.
      *  For example, if period is 256, then a val of 128 will be 50% pulsewidth
      */
     void SetPwm(uint32_t val);
@@ -80,10 +84,10 @@ class TimChannel
     typedef void (*EndTransmissionFunctionPtr)(void* context);
 
 
-    /** Starts the DMA for the given buffer, calling the callback 
+    /** Starts the DMA for the given buffer, calling the callback
      *  when the transmission is complete.
      */
-    void StartDma(void*                      data,
+    void StartDma(uint32_t*                  data,
                   size_t                     size,
                   EndTransmissionFunctionPtr callback   = nullptr,
                   void*                      cb_context = nullptr);
@@ -94,3 +98,5 @@ class TimChannel
     Config cfg_;
 };
 } // namespace daisy
+
+#endif

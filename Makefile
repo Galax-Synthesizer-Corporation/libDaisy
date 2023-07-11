@@ -37,6 +37,7 @@ dev/codec_pcm3060 \
 dev/codec_wm8731 \
 dev/lcd_hd44780 \
 dev/sdram \
+dev/ws2812 \
 hid/ctrl \
 hid/encoder \
 hid/gatein \
