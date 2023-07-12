@@ -71,12 +71,15 @@ class TimerHandle
         uint32_t period;
         bool     enable_irq; /**< Enable interrupt for user based callback */
 
+        bool     enable_autoreload;
+
         /* @brief Constructor for default states */
         Config()
         : periph(Peripheral::TIM_2),
           dir(CounterDir::UP),
           period(0xffffffff),
-          enable_irq(false)
+          enable_irq(false),
+          enable_autoreload(true)
         {
         }
     };

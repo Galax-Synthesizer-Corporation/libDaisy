@@ -1,9 +1,14 @@
 #include "tim_channel.h"
+#include "per/gpio.h"
 #include "util/hal_map.h"
 
 namespace daisy
 {
-static DMA_HandleTypeDef timhdma;
+static DMA_HandleTypeDef                      timhdma;
+static TIM_HandleTypeDef                      globaltim;
+static TimChannel::EndTransmissionFunctionPtr globalcb;
+static void*                                  globalcb_context;
+
 
 /** Pin Mappings:
      *  TODO: Make a map
@@ -82,21 +87,25 @@ void TimChannel::Init(const TimChannel::Config& cfg)
     sConfigOC.OCPolarity         = cfg.polarity == Config::Polarity::HIGH
                                        ? TIM_OCPOLARITY_HIGH
                                        : TIM_OCPOLARITY_LOW;
+    sConfigOC.OCNPolarity        = cfg.polarity == Config::Polarity::HIGH
+                                       ? TIM_OCNPOLARITY_HIGH
+                                       : TIM_OCNPOLARITY_LOW;
     sConfigOC.OCFastMode         = TIM_OCFAST_DISABLE;
-    auto              chn        = GetHalChannel(cfg.chn);
-    TIM_HandleTypeDef tim;
-    auto              af_value = SetInstance(&tim, cfg.tim->GetConfig().periph);
-    HAL_TIM_PWM_ConfigChannel(&tim, &sConfigOC, chn);
+    sConfigOC.OCIdleState        = TIM_OCIDLESTATE_RESET;
+    sConfigOC.OCNIdleState       = TIM_OCNIDLESTATE_RESET;
+    auto chn                     = GetHalChannel(cfg.chn);
+    auto af_value = SetInstance(&globaltim, cfg.tim->GetConfig().periph);
+    HAL_TIM_PWM_ConfigChannel(&globaltim, &sConfigOC, chn);
 
-    // TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig;
-    // sBreakDeadTimeConfig.OffStateRunMode  = TIM_OSSR_DISABLE;
-    // sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
-    // sBreakDeadTimeConfig.LockLevel        = TIM_LOCKLEVEL_OFF;
-    // sBreakDeadTimeConfig.DeadTime         = 0;
-    // sBreakDeadTimeConfig.BreakState       = TIM_BREAK_DISABLE;
-    // sBreakDeadTimeConfig.BreakPolarity    = TIM_BREAKPOLARITY_HIGH;
-    // sBreakDeadTimeConfig.AutomaticOutput  = TIM_AUTOMATICOUTPUT_DISABLE;
-    // HAL_TIMEx_ConfigBreakDeadTime(&tim, &sBreakDeadTimeConfig);
+    TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig;
+    sBreakDeadTimeConfig.OffStateRunMode  = TIM_OSSR_DISABLE;
+    sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
+    sBreakDeadTimeConfig.LockLevel        = TIM_LOCKLEVEL_OFF;
+    sBreakDeadTimeConfig.DeadTime         = 0;
+    sBreakDeadTimeConfig.BreakState       = TIM_BREAK_DISABLE;
+    sBreakDeadTimeConfig.BreakPolarity    = TIM_BREAKPOLARITY_HIGH;
+    sBreakDeadTimeConfig.AutomaticOutput  = TIM_AUTOMATICOUTPUT_DISABLE;
+    HAL_TIMEx_ConfigBreakDeadTime(&globaltim, &sBreakDeadTimeConfig);
 
     /** TODO: remove conversion to old pin, and add hal map for new Pin type */
     dsy_gpio_pin  tpin = cfg.pin;
@@ -123,38 +132,30 @@ const TimChannel::Config& TimChannel::GetConfig() const
 
 void TimChannel::Start()
 {
-    TIM_HandleTypeDef tim;
-    SetInstance(&tim, cfg_.tim->GetConfig().periph);
-    HAL_TIM_PWM_Start(&tim, GetHalChannel(cfg_.chn));
+    HAL_TIM_PWM_Start(&globaltim, GetHalChannel(cfg_.chn));
 }
 void TimChannel::Stop()
 {
-    TIM_HandleTypeDef tim;
-    SetInstance(&tim, cfg_.tim->GetConfig().periph);
-    HAL_TIM_PWM_Stop(&tim, GetHalChannel(cfg_.chn));
+    HAL_TIM_PWM_Stop(&globaltim, GetHalChannel(cfg_.chn));
 }
-
 void TimChannel::SetPwm(uint32_t val)
 {
-    TIM_HandleTypeDef tim;
-    SetInstance(&tim, cfg_.tim->GetConfig().periph);
-    __HAL_TIM_SET_COMPARE(&tim, GetHalChannel(cfg_.chn), val);
+    __HAL_TIM_SET_COMPARE(&globaltim, GetHalChannel(cfg_.chn), val);
 }
-static TIM_HandleTypeDef               globaltim;
-TimChannel::EndTransmissionFunctionPtr globalcb;
-void*                                  globalcb_context;
 
 void TimChannel::StartDma(uint32_t*                              data,
                           size_t                                 size,
                           TimChannel::EndTransmissionFunctionPtr callback,
                           void*                                  cb_context)
 {
-
     globalcb         = callback;
     globalcb_context = cb_context;
+    HAL_TIM_PWM_Start_DMA(&globaltim, GetHalChannel(cfg_.chn), data, size);
+}
 
-    HAL_TIM_PWM_Start_DMA(
-        &globaltim, GetHalChannel(cfg_.chn), data, size);
+void TimChannel::StopDma()
+{
+    HAL_TIM_PWM_Stop_DMA(&globaltim, GetHalChannel(cfg_.chn));
 }
 
 void TimChannel::initDma()

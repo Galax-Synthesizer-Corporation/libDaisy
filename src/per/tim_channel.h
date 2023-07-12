@@ -92,6 +92,8 @@ class TimChannel
                   EndTransmissionFunctionPtr callback   = nullptr,
                   void*                      cb_context = nullptr);
 
+    void StopDma();
+
     const Config& GetConfig() const;
 
   private:

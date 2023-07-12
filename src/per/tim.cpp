@@ -116,8 +116,10 @@ TimerHandle::Result TimerHandle::Impl::Init(const TimerHandle::Config& config)
 
     // Default Clock Division as none.
     tim_hal_handle_.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-
-    tim_hal_handle_.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+    tim_hal_handle_.Init.RepetitionCounter = 0;
+    tim_hal_handle_.Init.AutoReloadPreload
+        = config.enable_autoreload ? TIM_AUTORELOAD_PRELOAD_ENABLE
+                                   : TIM_AUTORELOAD_PRELOAD_DISABLE;
 
     // This function will call MspInit below
     if(HAL_TIM_Base_Init(&tim_hal_handle_) != HAL_OK)
