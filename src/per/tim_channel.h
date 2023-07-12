@@ -96,6 +96,8 @@ class TimChannel
 
   private:
     Config cfg_;
+
+    void initDma();
 };
 } // namespace daisy
 

@@ -74,6 +74,7 @@ static uint32_t GetHalChannel(TimChannel::Config::Channel chn)
 void TimChannel::Init(const TimChannel::Config& cfg)
 {
     cfg_ = cfg;
+
     /** Configure Channel */
     TIM_OC_InitTypeDef sConfigOC = {0};
     sConfigOC.OCMode             = TIM_OCMODE_PWM1;
@@ -86,6 +87,16 @@ void TimChannel::Init(const TimChannel::Config& cfg)
     TIM_HandleTypeDef tim;
     auto              af_value = SetInstance(&tim, cfg.tim->GetConfig().periph);
     HAL_TIM_PWM_ConfigChannel(&tim, &sConfigOC, chn);
+
+    // TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig;
+    // sBreakDeadTimeConfig.OffStateRunMode  = TIM_OSSR_DISABLE;
+    // sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
+    // sBreakDeadTimeConfig.LockLevel        = TIM_LOCKLEVEL_OFF;
+    // sBreakDeadTimeConfig.DeadTime         = 0;
+    // sBreakDeadTimeConfig.BreakState       = TIM_BREAK_DISABLE;
+    // sBreakDeadTimeConfig.BreakPolarity    = TIM_BREAKPOLARITY_HIGH;
+    // sBreakDeadTimeConfig.AutomaticOutput  = TIM_AUTOMATICOUTPUT_DISABLE;
+    // HAL_TIMEx_ConfigBreakDeadTime(&tim, &sBreakDeadTimeConfig);
 
     /** TODO: remove conversion to old pin, and add hal map for new Pin type */
     dsy_gpio_pin  tpin = cfg.pin;
@@ -101,6 +112,8 @@ void TimChannel::Init(const TimChannel::Config& cfg)
     gpio_init.Speed            = GPIO_SPEED_LOW;
     gpio_init.Alternate        = af_value;
     HAL_GPIO_Init(port, &gpio_init);
+
+    initDma();
 }
 
 const TimChannel::Config& TimChannel::GetConfig() const
@@ -136,11 +149,17 @@ void TimChannel::StartDma(uint32_t*                              data,
                           TimChannel::EndTransmissionFunctionPtr callback,
                           void*                                  cb_context)
 {
-    timhdma.Instance = DMA2_Stream5;
 
     globalcb         = callback;
     globalcb_context = cb_context;
 
+    HAL_TIM_PWM_Start_DMA(
+        &globaltim, GetHalChannel(cfg_.chn), data, size);
+}
+
+void TimChannel::initDma()
+{
+    timhdma.Instance = DMA2_Stream5;
     /** kind of nuts to set this.... */
     switch(cfg_.tim->GetConfig().periph)
     {
@@ -215,8 +234,7 @@ void TimChannel::StartDma(uint32_t*                              data,
             break;
     }
 
-    timhdma.Init.Direction = DMA_MEMORY_TO_PERIPH;
-
+    timhdma.Init.Direction           = DMA_MEMORY_TO_PERIPH;
     timhdma.Init.PeriphInc           = DMA_PINC_DISABLE;
     timhdma.Init.MemInc              = DMA_MINC_ENABLE;
     timhdma.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
@@ -231,6 +249,7 @@ void TimChannel::StartDma(uint32_t*                              data,
         // something bad
         asm("bkpt 255");
     }
+
     SetInstance(&globaltim, cfg_.tim->GetConfig().periph);
     switch(cfg_.chn)
     {
@@ -247,10 +266,7 @@ void TimChannel::StartDma(uint32_t*                              data,
             __HAL_LINKDMA(&globaltim, hdma[TIM_DMA_ID_CC4], timhdma);
             break;
     }
-    HAL_TIM_PWM_Start_DMA(
-        &globaltim, GetHalChannel(cfg_.chn), data, size);
 }
-
 
 extern "C" void DMA2_Stream5_IRQHandler(void)
 {
@@ -258,7 +274,6 @@ extern "C" void DMA2_Stream5_IRQHandler(void)
     // timhdma.Instance = DMA2_Stream5;
     HAL_DMA_IRQHandler(&timhdma);
 }
-
 
 extern "C" void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef* htim)
 {

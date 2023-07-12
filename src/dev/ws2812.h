@@ -14,7 +14,7 @@ namespace daisy
 class Ws2812
 {
   public:
-    static constexpr uint8_t kMaxNumLEDs = 32;
+    static constexpr uint8_t kMaxNumLEDs = 64;
 
     struct Config
     {
@@ -24,12 +24,9 @@ class Ws2812
         TimChannel::Config::Channel     tim_channel;
         Pin                             tim_pin;
 
-        uint32_t prescaler = 8;
-
-        // Percent of time pulse is "high" to represent zero and one.
-        // Target total pulse length is ~1.225uS based on datasheet.
-        float zero_high_pct = 0.29f;
-        float one_high_pct  = 0.57f;
+        uint32_t symbol_length_ns = 1250;
+        uint32_t zero_high_ns     = 400;
+        uint32_t one_high_ns      = 800;
     };
 
     Ws2812()  = default;

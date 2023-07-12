@@ -7,15 +7,8 @@ using namespace daisy;
 
 namespace daisy
 {
-/** Target 1.225 microsecond symbol length,
-     *  based on average of High + Low symbol lengths
-     *  from datasheet
-     */
-static constexpr uint32_t kWs2812PulseFreq
-    = static_cast<uint32_t>(1.0f / (1.225f * 1e-6));
-
-// 3 colors * 8 values per LED
-static constexpr size_t kPwmOutBufSize = Ws2812::kMaxNumLEDs * 3 * 8;
+// 3 colors * 8 values per LED plus one leading and one trailing zero
+static constexpr size_t kPwmOutBufSize = Ws2812::kMaxNumLEDs * 3 * 8 + 2;
 static uint32_t DMA_BUFFER_MEM_SECTION pwm_out_buf[kPwmOutBufSize];
 
 /** Private impl class for single static shared instance */
@@ -29,7 +22,8 @@ class Ws2812::Impl
 
     void Set(uint8_t idx, uint8_t r, uint8_t g, uint8_t b)
     {
-        if (idx >= num_leds_) return;
+        if(idx >= num_leds_)
+            return;
         led_data_[idx][0] = r;
         led_data_[idx][1] = g;
         led_data_[idx][2] = b;
@@ -48,25 +42,28 @@ class Ws2812::Impl
     uint32_t* dma_buffer_;
     size_t    dma_buffer_size_;
 
-    uint8_t   led_data_[Ws2812::kMaxNumLEDs][3]; /**< RGB data */
+    uint8_t led_data_[Ws2812::kMaxNumLEDs][3]; /**< RGB data */
 
-    static void OnTransferEnd(void *context)
+    bool dma_ready_;
+
+    static void OnTransferEnd(void* context)
     {
         Ws2812::Impl* pimpl = reinterpret_cast<Ws2812::Impl*>(context);
-        pimpl->pwm_.SetPwm(0);
-        // TODO: Timing until next valid transfer
+        pimpl->dma_ready_   = true;
+        // pimpl->pwm_.Start();
     }
 
     void populateBits(uint8_t color_val, uint32_t* buff)
     {
+        uint8_t mask = 0x80;
         for(int i = 0; i < 8; i++)
         {
-            buff[i]
-                = (color_val & (1 << (7 - i))) > 0 ? one_period_ : zero_period_;
+            buff[i] = (color_val & mask) > 0 ? one_period_ : zero_period_;
+            mask    = mask >> 1;
         }
     }
 
-    bool isDMAReady() { return false; }
+    bool isDMAReady() { return dma_ready_; }
 
     void fillDMABuffer()
     {
@@ -74,11 +71,11 @@ class Ws2812::Impl
         {
             /** Grab G, R, B for filling bytes */
             // TODO: Alt color order?
-            uint8_t g          = led_data_[i][1];
-            uint8_t r          = led_data_[i][0];
-            uint8_t b          = led_data_[i][2];
+            uint8_t g = led_data_[i][1];
+            uint8_t r = led_data_[i][0];
+            uint8_t b = led_data_[i][2];
 
-            size_t data_index = i * 3 * 8;
+            size_t data_index = i * 3 * 8 + 1;
             populateBits(g, &dma_buffer_[data_index]);
             populateBits(r, &dma_buffer_[data_index + 8]);
             populateBits(b, &dma_buffer_[data_index + 16]);
@@ -97,11 +94,13 @@ void Ws2812::Impl::Init(const Ws2812::Config& config)
     tim_cfg.dir    = TimerHandle::Config::CounterDir::UP;
     timer_.Init(tim_cfg);
 
-    uint32_t prescaler         = config.prescaler;
-    uint32_t tickspeed         = (System::GetPClk2Freq() * 2) / prescaler;
-    uint32_t target_pulse_freq = kWs2812PulseFreq;
+    // TODO: use correct clock for the peripheral
+    uint32_t prescaler         = 1;
+    uint32_t tickspeed         = (System::GetPClk1Freq() * 2) / prescaler;
+    uint32_t target_pulse_freq = 1e9 / config.symbol_length_ns;
     uint32_t period            = (tickspeed / target_pulse_freq) - 1;
-    timer_.SetPrescaler(prescaler - 1); /**< ps=0 is divide by 1 and so on.*/
+
+    timer_.SetPrescaler(prescaler - 1);
     timer_.SetPeriod(period);
 
     TimChannel::Config pwm_cfg;
@@ -113,23 +112,31 @@ void Ws2812::Impl::Init(const Ws2812::Config& config)
 
     pwm_.Init(pwm_cfg);
     pwm_.SetPwm(0);
-    pwm_.Start();
-    timer_.Start();
 
-    num_leds_    = std::min(config.num_leds, kMaxNumLEDs);
-    zero_period_ = period * config.zero_high_pct + 0.5f;
-    one_period_  = period * config.one_high_pct + 0.5f;
+    num_leds_ = std::min(config.num_leds, Ws2812::kMaxNumLEDs);
+    zero_period_
+        = period * ((float)config.zero_high_ns / config.symbol_length_ns);
+    one_period_
+        = period * ((float)config.one_high_ns / config.symbol_length_ns);
 
     // TODO: Externally passable?
     dma_buffer_      = pwm_out_buf;
-    dma_buffer_size_ = num_leds_ * 3 * 8;
+    dma_buffer_size_ = num_leds_ * 3 * 8 + 2;
+    dma_ready_       = true;
+
+    for(size_t i = 0; i < dma_buffer_size_; i++)
+    {
+        dma_buffer_[i] = 0;
+    }
 }
 
 void Ws2812::Impl::Show()
 {
-    // if(!isDMAReady()) return;
+    if(!isDMAReady())
+        return;
+    dma_ready_ = false;
     fillDMABuffer();
-    pwm_.Start();
+    pwm_.SetPwm(0);
     pwm_.StartDma(dma_buffer_, dma_buffer_size_, &Ws2812::Impl::OnTransferEnd, this);
 }
 
@@ -140,6 +147,7 @@ void Ws2812::Init(const Config& config)
     pimpl_ = &impl;
     pimpl_->Init(config);
     num_leds_ = config.num_leds;
+    Clear();
 }
 
 void Ws2812::Set(uint8_t idx, uint8_t r, uint8_t g, uint8_t b)
