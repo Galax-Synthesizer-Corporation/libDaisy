@@ -52,7 +52,7 @@ class Ws2812::Impl
         // pimpl->pwm_.StopDma();
         // pimpl->pwm_.SetPwm(0);
         // pimpl->pwm_.Start();
-        pimpl->dma_ready_ = true;
+        pimpl->dma_ready_   = true;
     }
 
     void populateBits(uint8_t color_val, uint32_t* buff)
@@ -92,8 +92,8 @@ static Ws2812::Impl impl;
 void Ws2812::Impl::Init(const Ws2812::Config& config)
 {
     TimerHandle::Config tim_cfg;
-    tim_cfg.periph            = config.timer_periph;
-    tim_cfg.dir               = TimerHandle::Config::CounterDir::UP;
+    tim_cfg.periph = config.timer_periph;
+    tim_cfg.dir    = TimerHandle::Config::CounterDir::UP;
     tim_cfg.enable_autoreload = false;
     timer_.Init(tim_cfg);
 
@@ -115,6 +115,7 @@ void Ws2812::Impl::Init(const Ws2812::Config& config)
 
     pwm_.Init(pwm_cfg);
     pwm_.SetPwm(0);
+    pwm_.Start();
 
     num_leds_ = std::min(config.num_leds, Ws2812::kMaxNumLEDs);
     zero_period_
@@ -139,8 +140,7 @@ void Ws2812::Impl::Show()
         return;
     dma_ready_ = false;
     fillDMABuffer();
-    pwm_.StartDma(
-        dma_buffer_, dma_buffer_size_, &Ws2812::Impl::OnTransferEnd, this);
+    pwm_.StartDma(dma_buffer_, dma_buffer_size_, &Ws2812::Impl::OnTransferEnd, this);
 }
 
 // -------

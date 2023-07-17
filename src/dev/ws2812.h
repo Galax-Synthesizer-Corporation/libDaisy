@@ -25,8 +25,8 @@ class Ws2812
         Pin                             tim_pin;
 
         uint32_t symbol_length_ns = 1250;
-        uint32_t zero_high_ns     = 400;
-        uint32_t one_high_ns      = 800;
+        uint32_t zero_high_ns     = 450;
+        uint32_t one_high_ns      = 850;
     };
 
     Ws2812()  = default;
