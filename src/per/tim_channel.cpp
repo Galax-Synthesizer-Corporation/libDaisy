@@ -4,6 +4,7 @@
 
 namespace daisy
 {
+static GPIO_InitTypeDef                       gpio_init;
 static DMA_HandleTypeDef                      timhdma;
 static TIM_HandleTypeDef                      globaltim;
 static TimChannel::EndTransmissionFunctionPtr globalcb;
@@ -114,7 +115,7 @@ void TimChannel::Init(const TimChannel::Config& cfg)
     /** Start Clock for port (if necessary) */
     dsy_hal_map_gpio_clk_enable(tpin.port);
     /** Intilize the actual pin */
-    GPIO_InitTypeDef gpio_init = {0};
+    gpio_init = {0};
     gpio_init.Pin              = pin;
     gpio_init.Mode             = GPIO_MODE_AF_PP;
     gpio_init.Pull             = GPIO_NOPULL;
@@ -132,10 +133,16 @@ const TimChannel::Config& TimChannel::GetConfig() const
 
 void TimChannel::Start()
 {
+    // dsy_gpio_pin  tpin = cfg_.pin;
+    // GPIO_TypeDef* port = dsy_hal_map_get_port(&tpin);
+    // gpio_init.Mode = GPIO_MODE_AF_PP;
     HAL_TIM_PWM_Start(&globaltim, GetHalChannel(cfg_.chn));
 }
 void TimChannel::Stop()
 {
+    // dsy_gpio_pin  tpin = cfg_.pin;
+    // GPIO_TypeDef* port = dsy_hal_map_get_port(&tpin);
+    // gpio_init.Mode = GPIO_MODE_OUTPUT_PP;
     HAL_TIM_PWM_Stop(&globaltim, GetHalChannel(cfg_.chn));
 }
 void TimChannel::SetPwm(uint32_t val)
@@ -148,13 +155,24 @@ void TimChannel::StartDma(uint32_t*                              data,
                           TimChannel::EndTransmissionFunctionPtr callback,
                           void*                                  cb_context)
 {
+
     globalcb         = callback;
     globalcb_context = cb_context;
     HAL_TIM_PWM_Start_DMA(&globaltim, GetHalChannel(cfg_.chn), data, size);
+
+    dsy_gpio_pin  tpin = cfg_.pin;
+    GPIO_TypeDef* port = dsy_hal_map_get_port(&tpin);
+    gpio_init.Mode = GPIO_MODE_AF_PP;
+    HAL_GPIO_Init(port, &gpio_init);
 }
 
 void TimChannel::StopDma()
 {
+    dsy_gpio_pin  tpin = cfg_.pin;
+    GPIO_TypeDef* port = dsy_hal_map_get_port(&tpin);
+    gpio_init.Mode = GPIO_MODE_OUTPUT_PP;
+    HAL_GPIO_Init(port, &gpio_init);
+    HAL_GPIO_WritePin(port, gpio_init.Pin, GPIO_PIN_RESET);
     HAL_TIM_PWM_Stop_DMA(&globaltim, GetHalChannel(cfg_.chn));
 }
 
