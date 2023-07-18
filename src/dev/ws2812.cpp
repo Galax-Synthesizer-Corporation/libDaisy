@@ -7,8 +7,8 @@ using namespace daisy;
 
 namespace daisy
 {
-// 3 colors * 8 values per LED plus one leading and one trailing zero
-static constexpr size_t kPwmOutBufSize = Ws2812::kMaxNumLEDs * 3 * 8 + 2;
+// 3 colors * 8 values per LED plus 8 leading/trailing trailing zeros
+static constexpr size_t kPwmOutBufSize = Ws2812::kMaxNumLEDs * 3 * 8 + 16;
 static uint32_t DMA_BUFFER_MEM_SECTION pwm_out_buf[kPwmOutBufSize];
 
 /** Private impl class for single static shared instance */
@@ -50,6 +50,8 @@ class Ws2812::Impl
     {
         Ws2812::Impl* pimpl = reinterpret_cast<Ws2812::Impl*>(context);
         pimpl->pwm_.StopDma();
+        pimpl->pwm_.SetPwm(0);
+        pimpl->pwm_.Start();
         pimpl->dma_ready_ = true;
     }
 
@@ -75,7 +77,7 @@ class Ws2812::Impl
             uint8_t r = led_data_[i][0];
             uint8_t b = led_data_[i][2];
 
-            size_t data_index = i * 3 * 8 + 1;
+            size_t data_index = i * 3 * 8 + 8;
             populateBits(g, &dma_buffer_[data_index]);
             populateBits(r, &dma_buffer_[data_index + 8]);
             populateBits(b, &dma_buffer_[data_index + 16]);
@@ -123,7 +125,7 @@ void Ws2812::Impl::Init(const Ws2812::Config& config)
 
     // TODO: Externally passable?
     dma_buffer_      = pwm_out_buf;
-    dma_buffer_size_ = num_leds_ * 3 * 8 + 2;
+    dma_buffer_size_ = num_leds_ * 3 * 8 + 16;
     dma_ready_       = true;
 
     for(size_t i = 0; i < dma_buffer_size_; i++)

@@ -160,19 +160,20 @@ void TimChannel::StartDma(uint32_t*                              data,
     globalcb_context = cb_context;
     HAL_TIM_PWM_Start_DMA(&globaltim, GetHalChannel(cfg_.chn), data, size);
 
-    dsy_gpio_pin  tpin = cfg_.pin;
-    GPIO_TypeDef* port = dsy_hal_map_get_port(&tpin);
-    gpio_init.Mode = GPIO_MODE_AF_PP;
-    HAL_GPIO_Init(port, &gpio_init);
+    // dsy_gpio_pin  tpin = cfg_.pin;
+    // GPIO_TypeDef* port = dsy_hal_map_get_port(&tpin);
+    // gpio_init.Mode = GPIO_MODE_AF_PP;
+    // HAL_GPIO_Init(port, &gpio_init);
 }
 
 void TimChannel::StopDma()
 {
-    dsy_gpio_pin  tpin = cfg_.pin;
-    GPIO_TypeDef* port = dsy_hal_map_get_port(&tpin);
-    gpio_init.Mode = GPIO_MODE_OUTPUT_PP;
-    HAL_GPIO_Init(port, &gpio_init);
-    HAL_GPIO_WritePin(port, gpio_init.Pin, GPIO_PIN_RESET);
+    // dsy_gpio_pin  tpin = cfg_.pin;
+    // GPIO_TypeDef* port = dsy_hal_map_get_port(&tpin);
+    // gpio_init.Mode = GPIO_MODE_OUTPUT_PP;
+    // HAL_GPIO_Init(port, &gpio_init);
+    // HAL_GPIO_WritePin(port, gpio_init.Pin, GPIO_PIN_RESET);
+
     HAL_TIM_PWM_Stop_DMA(&globaltim, GetHalChannel(cfg_.chn));
 }
 
