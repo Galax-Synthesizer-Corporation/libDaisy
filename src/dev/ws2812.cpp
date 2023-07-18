@@ -50,8 +50,8 @@ class Ws2812::Impl
     {
         Ws2812::Impl* pimpl = reinterpret_cast<Ws2812::Impl*>(context);
         pimpl->pwm_.StopDma();
-        pimpl->pwm_.SetPwm(0);
-        pimpl->pwm_.Start();
+        // pimpl->pwm_.SetPwm(0);
+        // pimpl->pwm_.Start();
         pimpl->dma_ready_ = true;
     }
 
@@ -94,11 +94,11 @@ void Ws2812::Impl::Init(const Ws2812::Config& config)
     TimerHandle::Config tim_cfg;
     tim_cfg.periph            = config.timer_periph;
     tim_cfg.dir               = TimerHandle::Config::CounterDir::UP;
-    tim_cfg.enable_autoreload = false;
+    tim_cfg.enable_autoreload = true;
     timer_.Init(tim_cfg);
 
     // TODO: use correct clock for the peripheral
-    uint32_t prescaler         = 1;
+    uint32_t prescaler         = 4;
     uint32_t tickspeed         = (System::GetPClk1Freq() * 2) / prescaler;
     uint32_t target_pulse_freq = 1e9 / config.symbol_length_ns;
     uint32_t period            = (tickspeed / target_pulse_freq) - 1;
@@ -114,8 +114,7 @@ void Ws2812::Impl::Init(const Ws2812::Config& config)
     pwm_cfg.pin      = config.tim_pin;
 
     pwm_.Init(pwm_cfg);
-    pwm_.SetPwm(0);
-    pwm_.Start();
+    timer_.Start();
 
     num_leds_ = std::min(config.num_leds, Ws2812::kMaxNumLEDs);
     zero_period_

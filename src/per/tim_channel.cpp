@@ -4,12 +4,231 @@
 
 namespace daisy
 {
-static GPIO_InitTypeDef                       gpio_init;
 static DMA_HandleTypeDef                      timhdma;
 static TIM_HandleTypeDef                      globaltim;
 static TimChannel::EndTransmissionFunctionPtr globalcb;
 static void*                                  globalcb_context;
 
+// Modified version of HAL method that doesn't modify Capture Compare register
+HAL_StatusTypeDef DSY_Modified_HAL_Start_DMA(TIM_HandleTypeDef* htim,
+                                             uint32_t           Channel,
+                                             uint32_t*          pData,
+                                             uint16_t           Length)
+{
+    uint32_t tmpsmcr;
+
+    /* Check the parameters */
+    assert_param(IS_TIM_CCX_INSTANCE(htim->Instance, Channel));
+
+    if((htim->State == HAL_TIM_STATE_BUSY))
+    {
+        return HAL_BUSY;
+    }
+    else if((htim->State == HAL_TIM_STATE_READY))
+    {
+        if((pData == NULL) && (Length > 0U))
+        {
+            return HAL_ERROR;
+        }
+        else
+        {
+            htim->State = HAL_TIM_STATE_BUSY;
+        }
+    }
+    else
+    {
+        /* nothing to do */
+    }
+
+    switch(Channel)
+    {
+        case TIM_CHANNEL_1:
+        {
+            /* Set the DMA compare callbacks */
+            htim->hdma[TIM_DMA_ID_CC1]->XferCpltCallback
+                = TIM_DMADelayPulseCplt;
+            htim->hdma[TIM_DMA_ID_CC1]->XferHalfCpltCallback
+                = TIM_DMADelayPulseHalfCplt;
+
+            /* Set the DMA error callback */
+            htim->hdma[TIM_DMA_ID_CC1]->XferErrorCallback = TIM_DMAError;
+
+            /* Enable the DMA stream */
+            if(HAL_DMA_Start_IT(htim->hdma[TIM_DMA_ID_CC1],
+                                (uint32_t)pData,
+                                (uint32_t)&htim->Instance->CCR1,
+                                Length)
+               != HAL_OK)
+            {
+                return HAL_ERROR;
+            }
+
+            /* Enable the TIM Capture/Compare 1 DMA request */
+            __HAL_TIM_ENABLE_DMA(htim, TIM_DMA_CC1);
+            break;
+        }
+
+        case TIM_CHANNEL_2:
+        {
+            /* Set the DMA compare callbacks */
+            htim->hdma[TIM_DMA_ID_CC2]->XferCpltCallback
+                = TIM_DMADelayPulseCplt;
+            htim->hdma[TIM_DMA_ID_CC2]->XferHalfCpltCallback
+                = TIM_DMADelayPulseHalfCplt;
+
+            /* Set the DMA error callback */
+            htim->hdma[TIM_DMA_ID_CC2]->XferErrorCallback = TIM_DMAError;
+
+            /* Enable the DMA stream */
+            if(HAL_DMA_Start_IT(htim->hdma[TIM_DMA_ID_CC2],
+                                (uint32_t)pData,
+                                (uint32_t)&htim->Instance->CCR2,
+                                Length)
+               != HAL_OK)
+            {
+                return HAL_ERROR;
+            }
+            /* Enable the TIM Capture/Compare 2 DMA request */
+            __HAL_TIM_ENABLE_DMA(htim, TIM_DMA_CC2);
+            break;
+        }
+
+        case TIM_CHANNEL_3:
+        {
+            /* Set the DMA compare callbacks */
+            htim->hdma[TIM_DMA_ID_CC3]->XferCpltCallback
+                = TIM_DMADelayPulseCplt;
+            htim->hdma[TIM_DMA_ID_CC3]->XferHalfCpltCallback
+                = TIM_DMADelayPulseHalfCplt;
+
+            /* Set the DMA error callback */
+            htim->hdma[TIM_DMA_ID_CC3]->XferErrorCallback = TIM_DMAError;
+
+            /* Enable the DMA stream */
+            if(HAL_DMA_Start_IT(htim->hdma[TIM_DMA_ID_CC3],
+                                (uint32_t)pData,
+                                (uint32_t)&htim->Instance->CCR3,
+                                Length)
+               != HAL_OK)
+            {
+                return HAL_ERROR;
+            }
+            /* Enable the TIM Output Capture/Compare 3 request */
+            __HAL_TIM_ENABLE_DMA(htim, TIM_DMA_CC3);
+            break;
+        }
+
+        case TIM_CHANNEL_4:
+        {
+            /* Set the DMA compare callbacks */
+            htim->hdma[TIM_DMA_ID_CC4]->XferCpltCallback
+                = TIM_DMADelayPulseCplt;
+            htim->hdma[TIM_DMA_ID_CC4]->XferHalfCpltCallback
+                = TIM_DMADelayPulseHalfCplt;
+
+            /* Set the DMA error callback */
+            htim->hdma[TIM_DMA_ID_CC4]->XferErrorCallback = TIM_DMAError;
+
+            /* Enable the DMA stream */
+            if(HAL_DMA_Start_IT(htim->hdma[TIM_DMA_ID_CC4],
+                                (uint32_t)pData,
+                                (uint32_t)&htim->Instance->CCR4,
+                                Length)
+               != HAL_OK)
+            {
+                return HAL_ERROR;
+            }
+            /* Enable the TIM Capture/Compare 4 DMA request */
+            __HAL_TIM_ENABLE_DMA(htim, TIM_DMA_CC4);
+            break;
+        }
+
+        default: break;
+    }
+
+    /* Enable the Capture compare channel */
+    //   TIM_CCxChannelCmd(htim->Instance, Channel, TIM_CCx_ENABLE);
+
+    //   if (IS_TIM_BREAK_INSTANCE(htim->Instance) != RESET)
+    //   {
+    //     /* Enable the main output */
+    //     __HAL_TIM_MOE_ENABLE(htim);
+    //   }
+
+    //   /* Enable the Peripheral, except in trigger mode where enable is automatically done with trigger */
+    //   tmpsmcr = htim->Instance->SMCR & TIM_SMCR_SMS;
+    //   if (!IS_TIM_SLAVEMODE_TRIGGER_ENABLED(tmpsmcr))
+    //   {
+    //     __HAL_TIM_ENABLE(htim);
+    //   }
+
+    /* Return function status */
+    return HAL_OK;
+}
+
+
+// Modified version of HAL method that doesn't stop/disable the timer peripheral, just DMA
+static HAL_StatusTypeDef DSY_Modified_HAL_Stop_DMA(TIM_HandleTypeDef* htim,
+                                                   uint32_t           Channel)
+{
+    /* Check the parameters */
+    assert_param(IS_TIM_CCX_INSTANCE(htim->Instance, Channel));
+
+    switch(Channel)
+    {
+        case TIM_CHANNEL_1:
+        {
+            /* Disable the TIM Capture/Compare 1 DMA request */
+            __HAL_TIM_DISABLE_DMA(htim, TIM_DMA_CC1);
+            (void)HAL_DMA_Abort_IT(htim->hdma[TIM_DMA_ID_CC1]);
+            break;
+        }
+
+        case TIM_CHANNEL_2:
+        {
+            /* Disable the TIM Capture/Compare 2 DMA request */
+            __HAL_TIM_DISABLE_DMA(htim, TIM_DMA_CC2);
+            (void)HAL_DMA_Abort_IT(htim->hdma[TIM_DMA_ID_CC2]);
+            break;
+        }
+
+        case TIM_CHANNEL_3:
+        {
+            /* Disable the TIM Capture/Compare 3 DMA request */
+            __HAL_TIM_DISABLE_DMA(htim, TIM_DMA_CC3);
+            (void)HAL_DMA_Abort_IT(htim->hdma[TIM_DMA_ID_CC3]);
+            break;
+        }
+
+        case TIM_CHANNEL_4:
+        {
+            /* Disable the TIM Capture/Compare 4 interrupt */
+            __HAL_TIM_DISABLE_DMA(htim, TIM_DMA_CC4);
+            (void)HAL_DMA_Abort_IT(htim->hdma[TIM_DMA_ID_CC4]);
+            break;
+        }
+
+        default: break;
+    }
+
+    /* Disable the Capture compare channel */
+    //   TIM_CCxChannelCmd(htim->Instance, Channel, TIM_CCx_DISABLE);
+
+    //   if (IS_TIM_BREAK_INSTANCE(htim->Instance) != RESET)
+    //   {
+    //     /* Disable the Main Output */
+    //     __HAL_TIM_MOE_DISABLE(htim);
+    //   }
+
+    //   /* Disable the Peripheral */
+    //   __HAL_TIM_DISABLE(htim);
+
+    /* Change the htim state */
+    htim->State = HAL_TIM_STATE_READY;
+
+    /* Return function status */
+    return HAL_OK;
+}
 
 /** Pin Mappings:
      *  TODO: Make a map
@@ -115,15 +334,20 @@ void TimChannel::Init(const TimChannel::Config& cfg)
     /** Start Clock for port (if necessary) */
     dsy_hal_map_gpio_clk_enable(tpin.port);
     /** Intilize the actual pin */
-    gpio_init = {0};
-    gpio_init.Pin              = pin;
-    gpio_init.Mode             = GPIO_MODE_AF_PP;
-    gpio_init.Pull             = GPIO_NOPULL;
-    gpio_init.Speed            = GPIO_SPEED_LOW;
-    gpio_init.Alternate        = af_value;
+    GPIO_InitTypeDef gpio_init;
+    gpio_init           = {0};
+    gpio_init.Pin       = pin;
+    gpio_init.Mode      = GPIO_MODE_AF_PP;
+    gpio_init.Pull      = GPIO_NOPULL;
+    gpio_init.Speed     = GPIO_SPEED_LOW;
+    gpio_init.Alternate = af_value;
     HAL_GPIO_Init(port, &gpio_init);
 
     initDma();
+
+    // Enable capture compare channel for the timer
+    TIM_CCxChannelCmd(
+        globaltim.Instance, GetHalChannel(cfg_.chn), TIM_CCx_ENABLE);
 }
 
 const TimChannel::Config& TimChannel::GetConfig() const
@@ -155,26 +379,14 @@ void TimChannel::StartDma(uint32_t*                              data,
                           TimChannel::EndTransmissionFunctionPtr callback,
                           void*                                  cb_context)
 {
-
     globalcb         = callback;
     globalcb_context = cb_context;
-    HAL_TIM_PWM_Start_DMA(&globaltim, GetHalChannel(cfg_.chn), data, size);
-
-    // dsy_gpio_pin  tpin = cfg_.pin;
-    // GPIO_TypeDef* port = dsy_hal_map_get_port(&tpin);
-    // gpio_init.Mode = GPIO_MODE_AF_PP;
-    // HAL_GPIO_Init(port, &gpio_init);
+    DSY_Modified_HAL_Start_DMA(&globaltim, GetHalChannel(cfg_.chn), data, size);
 }
 
 void TimChannel::StopDma()
 {
-    // dsy_gpio_pin  tpin = cfg_.pin;
-    // GPIO_TypeDef* port = dsy_hal_map_get_port(&tpin);
-    // gpio_init.Mode = GPIO_MODE_OUTPUT_PP;
-    // HAL_GPIO_Init(port, &gpio_init);
-    // HAL_GPIO_WritePin(port, gpio_init.Pin, GPIO_PIN_RESET);
-
-    HAL_TIM_PWM_Stop_DMA(&globaltim, GetHalChannel(cfg_.chn));
+    DSY_Modified_HAL_Stop_DMA(&globaltim, GetHalChannel(cfg_.chn));
 }
 
 void TimChannel::initDma()
