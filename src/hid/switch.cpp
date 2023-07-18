@@ -1,6 +1,11 @@
 #include "hid/switch.h"
 using namespace daisy;
 
+void Switch::InitManual()
+{
+    Init(Pin());
+}
+
 void Switch::Init(dsy_gpio_pin pin,
                   float        update_rate,
                   Type         t,
@@ -32,6 +37,13 @@ void Switch::Init(dsy_gpio_pin pin, float update_rate)
 
 void Switch::Debounce()
 {
+    const bool on
+        = flip_ ? !dsy_gpio_read(&hw_gpio_) : dsy_gpio_read(&hw_gpio_);
+    DebounceManual(on);
+}
+
+void Switch::DebounceManual(bool on)
+{
     // update no faster than 1kHz
     uint32_t now = System::GetNow();
     updated_     = false;
@@ -42,9 +54,7 @@ void Switch::Debounce()
         updated_     = true;
 
         // shift over, and introduce new state.
-        state_
-            = (state_ << 1)
-              | (flip_ ? !dsy_gpio_read(&hw_gpio_) : dsy_gpio_read(&hw_gpio_));
+        state_ = (state_ << 1) | on;
         // Set time at which button was pressed
         if(state_ == 0x7f)
             rising_edge_time_ = System::GetNow();

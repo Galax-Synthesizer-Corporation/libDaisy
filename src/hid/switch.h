@@ -7,8 +7,8 @@
 
 namespace daisy
 {
-/** 
-    Generic Class for handling momentary/latching switches \n 
+/**
+    Generic Class for handling momentary/latching switches \n
     Inspired/influenced by Mutable Instruments (pichenettes) Switch classes
     @author Stephen Hensley
     @date December 2019
@@ -41,7 +41,10 @@ class Switch
     Switch() {}
     ~Switch() {}
 
-    /** 
+    /** Init for manual input, not pin-driven */
+    void InitManual();
+
+    /**
     Initializes the switch object with a given port/pin combo.
     \param pin port/pin object to tell the switch which hardware pin to use.
     \param update_rate Does nothing. Backwards compatibility until next breaking update.
@@ -59,12 +62,15 @@ class Switch
     */
     void Init(dsy_gpio_pin pin, float update_rate = 0.f);
 
-    /** 
+    /**
     Called at update_rate to debounce and handle timing for the switch.
     In order for events not to be missed, its important that the Edge/Pressed checks
     be made at the same rate as the debounce function is being called.
     */
     void Debounce();
+
+    /** Variant that takes explicit input (for use with `InitManual`)*/
+    void DebounceManual(bool on);
 
     /** \return true if a button was just pressed. */
     inline bool RisingEdge() const { return updated_ ? state_ == 0x7f : false; }
