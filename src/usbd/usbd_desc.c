@@ -66,10 +66,10 @@
 // BOTH
 #define USBD_VID 1155
 #define USBD_LANGID_STRING 1033
-#define USBD_MANUFACTURER_STRING "Electrosmith"
+#define USBD_MANUFACTURER_STRING "Galax Synthesizer Corp."
 // HS
-#define USBD_PID_HS 22336 // replace with our PID when we have one.
-#define USBD_PRODUCT_STRING_HS "Daisy Seed External"
+#define USBD_PID_HS 0x6762 // arbitrary PID for balsam - "GB" in ascii
+#define USBD_PRODUCT_STRING_HS "Balsam MPE"
 #define USBD_CONFIGURATION_STRING_HS "CDC Config"
 #define USBD_INTERFACE_STRING_HS "CDC Interface"
 // FS
