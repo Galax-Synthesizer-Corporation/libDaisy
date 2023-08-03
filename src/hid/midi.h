@@ -15,6 +15,26 @@
 
 namespace daisy
 {
+
+struct MidiTxMessage
+{
+    static constexpr size_t kMaxDataSize = SYSEX_BUFFER_LEN + 2;
+
+    uint8_t data[kMaxDataSize];
+    size_t  size;
+
+    MidiTxMessage();
+    ~MidiTxMessage() = default;
+
+    static MidiTxMessage NoteOn(uint8_t ch, uint8_t nn, uint8_t vel);
+    static MidiTxMessage NoteOff(uint8_t ch, uint8_t nn, uint8_t vel);
+    static MidiTxMessage PitchBend(uint8_t ch, int16_t bend);
+    static MidiTxMessage SystemRealtimeClock();
+    static MidiTxMessage SystemRealtimeStart();
+    static MidiTxMessage SystemRealtimeStop();
+    static MidiTxMessage SystemExclusive(const uint8_t* data, size_t size);
+};
+
 /** @brief   Transport layer for sending and receiving MIDI data over UART
  *  @details This is the mode of communication used for TRS and DIN MIDI
  *           There is an additional 2kB of RAM data used within this class
@@ -55,6 +75,10 @@ class MidiUartTransport
          */
         size_t rx_buffer_size;
 
+        // TODO: Docs, but this is same as above
+        uint8_t* tx_buffer;
+        size_t   tx_buffer_size;
+
         Config();
     };
 
@@ -75,11 +99,12 @@ class MidiUartTransport
         uart_config.pin_config.rx = config.rx;
         uart_config.pin_config.tx = config.tx;
 
-        rx_buffer      = config.rx_buffer;
-        rx_buffer_size = config.rx_buffer_size;
+        rx_buffer_      = config.rx_buffer;
+        rx_buffer_size_ = config.rx_buffer_size;
 
         /** zero the buffer to ensure emptiness regardless of source memory */
-        std::fill(rx_buffer, rx_buffer + rx_buffer_size, 0);
+        std::fill(rx_buffer_, rx_buffer_ + rx_buffer_size_, 0);
+        std::fill(tx_buffer_, tx_buffer_ + tx_buffer_size_, 0);
 
         uart_.Init(uart_config);
     }
@@ -93,7 +118,7 @@ class MidiUartTransport
         dsy_dma_clear_cache_for_buffer((uint8_t*)this,
                                        sizeof(MidiUartTransport));
         uart_.DmaListenStart(
-            rx_buffer, rx_buffer_size, MidiUartTransport::rxCallback, this);
+            rx_buffer_, rx_buffer_size_, MidiUartTransport::rxCallback, this);
     }
 
     /** @brief returns whether the UART peripheral is actively listening in the background or not */
@@ -103,14 +128,21 @@ class MidiUartTransport
     inline void FlushRx() {}
 
     /** @brief sends the buffer of bytes out of the UART peripheral */
-    inline void Tx(uint8_t* buff, size_t size) { uart_.PollTx(buff, size); }
+    inline void Tx(uint8_t* buff, size_t size)
+    {
+        uart_.BlockingTransmit(buff, size, 10);
+    }
 
   private:
     UartHandler         uart_;
-    uint8_t*            rx_buffer;
-    size_t              rx_buffer_size;
+    uint8_t*            rx_buffer_;
+    size_t              rx_buffer_size_;
+    uint8_t*            tx_buffer_;
+    size_t              tx_buffer_size_;
     void*               parse_context_;
     MidiRxParseCallback parse_callback_;
+
+    bool dma_ready_;
 
     /** Static callback for Uart MIDI that occurs when
          *  new data is available from the peripheral.
@@ -138,6 +170,8 @@ class MidiUartTransport
             }
         }
     }
+
+    static void txFinishedCallback() {}
 };
 
 /**
@@ -194,20 +228,43 @@ class MidiHandler
     /** Checks if there are unhandled messages in the queue
     \return True if there are events to be handled, else false.
      */
-    bool HasEvents() const { return event_q_.GetNumElements() > 0; }
+    bool HasEvents() const { return !rx_event_q_.IsEmpty(); }
 
 
     /** Pops the oldest unhandled MidiEvent from the internal queue
     \return The event to be handled
      */
-    MidiEvent PopEvent() { return event_q_.PopFront(); }
+    MidiEvent PopEvent() { return rx_event_q_.PopFront(); }
 
     /** SendMessage
     Send raw bytes as message
     */
-    void SendMessage(uint8_t* bytes, size_t size)
+    void SendMessage(const MidiTxMessage& msg) { tx_msg_q_.PushBack(msg); }
+
+    /** Higher priority message queue for ISR (clock, etc)
+     *  These are transmitted in FIFO order, but *before*
+     *  the non-ISR message queue
+     */
+    void SendMessageFromISR(const MidiTxMessage& msg)
     {
-        transport_.Tx(bytes, size);
+        tx_msg_q_isr_.PushBack(msg);
+    }
+
+    /** Transmit enqueued messages*/
+    void TransmitMessages()
+    {
+        MidiTxMessage msg;
+        // TODO: Concat data, running status
+        while(!tx_msg_q_isr_.IsEmpty())
+        {
+            msg = tx_msg_q_isr_.PopFront();
+            transport_.Tx(msg.data, msg.size);
+        }
+        while(!tx_msg_q_.IsEmpty())
+        {
+            msg = tx_msg_q_.PopFront();
+            transport_.Tx(msg.data, msg.size);
+        }
     }
 
     /** Feed in bytes to parser state machine from an external source.
@@ -221,15 +278,17 @@ class MidiHandler
         MidiEvent event;
         if(parser_.Parse(byte, &event))
         {
-            event_q_.PushBack(event);
+            rx_event_q_.PushBack(event);
         }
     }
 
   private:
-    Config               config_;
-    Transport            transport_;
-    MidiParser           parser_;
-    FIFO<MidiEvent, 256> event_q_;
+    Config                   config_;
+    Transport                transport_;
+    MidiParser               parser_;
+    FIFO<MidiEvent, 256>     rx_event_q_;
+    FIFO<MidiTxMessage, 256> tx_msg_q_;
+    FIFO<MidiTxMessage, 256> tx_msg_q_isr_;
 
     static void ParseCallback(uint8_t* data, size_t size, void* context)
     {
