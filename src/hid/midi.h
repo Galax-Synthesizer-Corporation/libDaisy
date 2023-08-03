@@ -182,7 +182,10 @@ class MidiUartTransport
     @date March 2020
     @ingroup midi
 */
-template <typename Transport>
+template <typename Transport,
+          size_t KRxEventQueueSize    = 128,
+          size_t kTxEventQueueSize    = 128,
+          size_t kTxISREventQueueSize = 64>
 class MidiHandler
 {
   public:
@@ -283,12 +286,12 @@ class MidiHandler
     }
 
   private:
-    Config                   config_;
-    Transport                transport_;
-    MidiParser               parser_;
-    FIFO<MidiEvent, 256>     rx_event_q_;
-    FIFO<MidiTxMessage, 256> tx_msg_q_;
-    FIFO<MidiTxMessage, 256> tx_msg_q_isr_;
+    Config                                    config_;
+    Transport                                 transport_;
+    MidiParser                                parser_;
+    FIFO<MidiEvent, KRxEventQueueSize>        rx_event_q_;
+    FIFO<MidiTxMessage, kTxEventQueueSize>    tx_msg_q_;
+    FIFO<MidiTxMessage, kTxISREventQueueSize> tx_msg_q_isr_;
 
     static void ParseCallback(uint8_t* data, size_t size, void* context)
     {
