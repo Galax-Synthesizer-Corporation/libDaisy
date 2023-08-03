@@ -137,6 +137,9 @@ class TimerHandle
     /** @brief Stops the TIM peripheral specified by Config */
     Result Stop();
 
+    /** @brief Reset counter register to 0 immediately */
+    void Reset();
+
     /** @brief Returns the frequency of each tick of the timer in Hz */
     uint32_t GetFreq();
 

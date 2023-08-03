@@ -26,6 +26,7 @@ class TimerHandle::Impl
 
     TimerHandle::Result Start();
     TimerHandle::Result Stop();
+    void                Reset();
     TimerHandle::Result SetPeriod(uint32_t ticks);
     TimerHandle::Result SetPrescaler(uint32_t val);
     uint32_t            GetFreq();
@@ -115,7 +116,7 @@ TimerHandle::Result TimerHandle::Impl::Init(const TimerHandle::Config& config)
         tim_hal_handle_.Init.Period = (uint16_t)config_.period;
 
     // Default Clock Division as none.
-    tim_hal_handle_.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+    tim_hal_handle_.Init.ClockDivision     = TIM_CLOCKDIVISION_DIV1;
     tim_hal_handle_.Init.RepetitionCounter = 0;
     tim_hal_handle_.Init.AutoReloadPreload
         = config.enable_autoreload ? TIM_AUTORELOAD_PRELOAD_ENABLE
@@ -181,6 +182,11 @@ TimerHandle::Result TimerHandle::Impl::Stop()
     return HAL_TIM_Base_Stop(&tim_hal_handle_) == HAL_OK
                ? TimerHandle::Result::OK
                : TimerHandle::Result::ERR;
+}
+
+void TimerHandle::Impl::Reset()
+{
+    __HAL_TIM_SET_COUNTER(&tim_hal_handle_, 0);
 }
 
 TimerHandle::Result TimerHandle::Impl::SetPeriod(uint32_t ticks)
@@ -396,6 +402,11 @@ TimerHandle::Result TimerHandle::Start()
 TimerHandle::Result TimerHandle::Stop()
 {
     return pimpl_->Stop();
+}
+
+void TimerHandle::Reset()
+{
+    pimpl_->Reset();
 }
 
 TimerHandle::Result TimerHandle::SetPeriod(uint32_t ticks)
