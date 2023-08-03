@@ -19,7 +19,7 @@ class MidiUsbTransport::Impl
 
     bool RxActive() { return rx_active_; }
     void FlushRx() { rx_buffer_.Flush(); }
-    void Tx(uint8_t* buffer, size_t size);
+    bool Tx(uint8_t* buffer, size_t size);
 
     void UsbToMidi(uint8_t* buffer, uint8_t length);
     void MidiToUsb(uint8_t* buffer, size_t length);
@@ -103,7 +103,7 @@ void MidiUsbTransport::Impl::Init(Config config)
     usb_handle_.SetReceiveCallback(ReceiveCallback, periph);
 }
 
-void MidiUsbTransport::Impl::Tx(uint8_t* buffer, size_t size)
+bool MidiUsbTransport::Impl::Tx(uint8_t* buffer, size_t size)
 {
     UsbHandle::Result result;
     int               attempt_count = config_.tx_retry_count;
@@ -124,6 +124,7 @@ void MidiUsbTransport::Impl::Tx(uint8_t* buffer, size_t size)
     } while(should_retry);
 
     tx_ptr_ = 0;
+    return result == UsbHandle::Result::OK;
 }
 
 void MidiUsbTransport::Impl::UsbToMidi(uint8_t* buffer, uint8_t length)
@@ -322,7 +323,13 @@ void MidiUsbTransport::FlushRx()
     pimpl_->FlushRx();
 }
 
-void MidiUsbTransport::Tx(uint8_t* buffer, size_t size)
+bool MidiUsbTransport::WriteMessage(const MidiTxMessage& message)
 {
-    pimpl_->Tx(buffer, size);
+    return pimpl_->Tx(const_cast<uint8_t*>(message.data), message.size);
+}
+
+void MidiUsbTransport::Transmit()
+{
+    // TODO: Use MidiTxBuffer here too,
+    // currently just sending messages as they come
 }

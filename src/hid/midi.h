@@ -9,31 +9,13 @@
 #include "util/ringbuffer.h"
 #include "util/FIFO.h"
 #include "hid/midi_parser.h"
+#include "hid/midi_util.h"
 #include "hid/usb_midi.h"
 #include "sys/dma.h"
 #include "sys/system.h"
 
 namespace daisy
 {
-
-struct MidiTxMessage
-{
-    static constexpr size_t kMaxDataSize = SYSEX_BUFFER_LEN + 2;
-
-    uint8_t data[kMaxDataSize];
-    size_t  size;
-
-    MidiTxMessage();
-    ~MidiTxMessage() = default;
-
-    static MidiTxMessage NoteOn(uint8_t ch, uint8_t nn, uint8_t vel);
-    static MidiTxMessage NoteOff(uint8_t ch, uint8_t nn, uint8_t vel);
-    static MidiTxMessage PitchBend(uint8_t ch, int16_t bend);
-    static MidiTxMessage SystemRealtimeClock();
-    static MidiTxMessage SystemRealtimeStart();
-    static MidiTxMessage SystemRealtimeStop();
-    static MidiTxMessage SystemExclusive(const uint8_t* data, size_t size);
-};
 
 /** @brief   Transport layer for sending and receiving MIDI data over UART
  *  @details This is the mode of communication used for TRS and DIN MIDI
@@ -67,17 +49,17 @@ class MidiUartTransport
          */
         uint8_t* rx_buffer;
 
-        /** Size in bytes of rx_buffer.
+        /** Capacity in bytes of rx_buffer.
          *
-         *  @details This size determines the maximum Rx bytes readable by the UART in the background.
+         *  @details This value determines the maximum Rx bytes readable by the UART in the background.
          *           By default it's set to the size of the default shared rx_buffer (256 bytes).
          *           While much smaller sizes can be used, data can get missed if the buffer is too small.
          */
-        size_t rx_buffer_size;
+        size_t rx_buffer_capacity;
 
-        // TODO: Docs, but this is same as above
+        // TODO: Docs, but this is same as above minus DMA memory requirement
         uint8_t* tx_buffer;
-        size_t   tx_buffer_size;
+        size_t   tx_buffer_capacity;
 
         Config();
     };
@@ -99,12 +81,13 @@ class MidiUartTransport
         uart_config.pin_config.rx = config.rx;
         uart_config.pin_config.tx = config.tx;
 
-        rx_buffer_      = config.rx_buffer;
-        rx_buffer_size_ = config.rx_buffer_size;
+        rx_buffer_          = config.rx_buffer;
+        rx_buffer_capacity_ = config.rx_buffer_capacity;
 
-        /** zero the buffer to ensure emptiness regardless of source memory */
-        std::fill(rx_buffer_, rx_buffer_ + rx_buffer_size_, 0);
-        std::fill(tx_buffer_, tx_buffer_ + tx_buffer_size_, 0);
+        tx_buffer_.Init(config.tx_buffer, config.tx_buffer_capacity);
+
+        /** zero the rx buffer to ensure emptiness regardless of source memory */
+        std::fill(rx_buffer_, rx_buffer_ + rx_buffer_capacity_, 0);
 
         uart_.Init(uart_config);
     }
@@ -117,8 +100,10 @@ class MidiUartTransport
         parse_callback_ = parse_callback;
         dsy_dma_clear_cache_for_buffer((uint8_t*)this,
                                        sizeof(MidiUartTransport));
-        uart_.DmaListenStart(
-            rx_buffer_, rx_buffer_size_, MidiUartTransport::rxCallback, this);
+        uart_.DmaListenStart(rx_buffer_,
+                             rx_buffer_capacity_,
+                             MidiUartTransport::rxCallback,
+                             this);
     }
 
     /** @brief returns whether the UART peripheral is actively listening in the background or not */
@@ -127,22 +112,31 @@ class MidiUartTransport
     /** @brief This is a no-op for UART transport - Rx is via DMA callback with circular buffer */
     inline void FlushRx() {}
 
-    /** @brief sends the buffer of bytes out of the UART peripheral */
-    inline void Tx(uint8_t* buff, size_t size)
+    inline bool WriteMessage(const MidiTxMessage& message)
     {
-        uart_.BlockingTransmit(buff, size, 10);
+        if(!tx_buffer_.IsWriteable(message.size))
+            return false;
+        return tx_buffer_.WriteMessage(message.data, message.size);
+    }
+
+    inline void Transmit()
+    {
+        if(!tx_buffer_.IsEmpty())
+        {
+            uart_.BlockingTransmit(const_cast<uint8_t*>(tx_buffer_.GetData()),
+                                   tx_buffer_.GetSize(),
+                                   10);
+            tx_buffer_.Consume();
+        }
     }
 
   private:
     UartHandler         uart_;
     uint8_t*            rx_buffer_;
-    size_t              rx_buffer_size_;
-    uint8_t*            tx_buffer_;
-    size_t              tx_buffer_size_;
+    size_t              rx_buffer_capacity_;
+    MidiTxBuffer        tx_buffer_;
     void*               parse_context_;
     MidiRxParseCallback parse_callback_;
-
-    bool dma_ready_;
 
     /** Static callback for Uart MIDI that occurs when
          *  new data is available from the peripheral.
@@ -170,8 +164,6 @@ class MidiUartTransport
             }
         }
     }
-
-    static void txFinishedCallback() {}
 };
 
 /**
@@ -260,14 +252,23 @@ class MidiHandler
         // TODO: Concat data, running status
         while(!tx_msg_q_isr_.IsEmpty())
         {
-            msg = tx_msg_q_isr_.PopFront();
-            transport_.Tx(msg.data, msg.size);
+            msg = tx_msg_q_isr_.Front();
+            if(!transport_.WriteMessage(msg))
+            {
+                break;
+            }
+            tx_msg_q_isr_.PopFront();
         }
         while(!tx_msg_q_.IsEmpty())
         {
-            msg = tx_msg_q_.PopFront();
-            transport_.Tx(msg.data, msg.size);
+            msg = tx_msg_q_.Front();
+            if(!transport_.WriteMessage(msg))
+            {
+                break;
+            }
+            tx_msg_q_.PopFront();
         }
+        transport_.Transmit();
     }
 
     /** Feed in bytes to parser state machine from an external source.

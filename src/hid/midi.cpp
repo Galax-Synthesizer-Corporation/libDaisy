@@ -3,24 +3,23 @@
 
 namespace daisy
 {
-static constexpr size_t kDefaultMidiRxBufferSize = 256;
-static constexpr size_t kDefaultMidiTxBufferSize = 256;
+static constexpr size_t kDefaultMidiRxBufferCapacity = 256;
+static constexpr size_t kDefaultMidiTxBufferCapacity = 256;
 
 static uint8_t DMA_BUFFER_MEM_SECTION
-    default_midi_rx_buffer[kDefaultMidiRxBufferSize];
+    default_midi_rx_buffer[kDefaultMidiRxBufferCapacity];
 
-static uint8_t DMA_BUFFER_MEM_SECTION
-    default_midi_tx_buffer[kDefaultMidiTxBufferSize];
+static uint8_t default_midi_tx_buffer[kDefaultMidiTxBufferCapacity];
 
 MidiUartTransport::Config::Config()
 {
-    periph         = UartHandler::Config::Peripheral::USART_1;
-    rx             = {DSY_GPIOB, 7};
-    tx             = {DSY_GPIOB, 6};
-    rx_buffer      = default_midi_rx_buffer;
-    rx_buffer_size = kDefaultMidiRxBufferSize;
-    tx_buffer      = default_midi_tx_buffer;
-    tx_buffer_size = kDefaultMidiTxBufferSize;
+    periph             = UartHandler::Config::Peripheral::USART_1;
+    rx                 = {DSY_GPIOB, 7};
+    tx                 = {DSY_GPIOB, 6};
+    rx_buffer          = default_midi_rx_buffer;
+    rx_buffer_capacity = kDefaultMidiRxBufferCapacity;
+    tx_buffer          = default_midi_tx_buffer;
+    tx_buffer_capacity = kDefaultMidiTxBufferCapacity;
 }
 
 MidiTxMessage::MidiTxMessage()
