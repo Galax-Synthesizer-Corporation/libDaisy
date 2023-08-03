@@ -102,7 +102,7 @@ MidiTxMessage MidiTxMessage::SystemExclusive(const uint8_t* data, size_t size)
     // data
     memcpy(msg.data + 1, data, size);
     // stop byte
-    msg.data[size - 1] = 0xF7;
+    msg.data[size + 1] = 0xF7;
     return msg;
 }
 
