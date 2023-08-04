@@ -2,7 +2,6 @@
 #ifndef __DSY_MIDIUSBTRANSPORT_H__
 #define __DSY_MIDIUSBTRANSPORT_H__
 
-#include "hid/midi_util.h"
 #include "hid/usb.h"
 #include "sys/system.h"
 #include "util/ringbuffer.h"
@@ -49,8 +48,7 @@ class MidiUsbTransport
     void StartRx(MidiRxParseCallback callback, void* context);
     bool RxActive();
     void FlushRx();
-    bool WriteMessage(const MidiTxMessage& message);
-    void Transmit();
+    void Tx(uint8_t* buffer, size_t size);
 
     class Impl;
 

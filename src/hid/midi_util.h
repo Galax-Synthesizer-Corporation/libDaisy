@@ -26,20 +26,20 @@ struct MidiTxMessage
     static MidiTxMessage SystemExclusive(const uint8_t* data, size_t size);
 };
 
+template <size_t kSize>
 class MidiTxBuffer
 {
   public:
     MidiTxBuffer(){};
     ~MidiTxBuffer(){};
 
-    void Init(uint8_t* buf, size_t capacity)
+    void Init()
     {
-        buf_      = buf;
-        capacity_ = capacity;
-        size_     = 0;
+        size_        = 0;
+        last_status_ = 0;
     }
 
-    bool IsWriteable(size_t added) const { return size_ + added < capacity_; }
+    bool IsWriteable(size_t added) const { return size_ + added < kSize; }
 
     bool IsEmpty() const { return size_ == 0; }
 
@@ -67,6 +67,7 @@ class MidiTxBuffer
 
     const uint8_t* GetData() const { return buf_; }
     size_t         GetSize() const { return size_; }
+
     void           Consume()
     {
         size_        = 0;
@@ -74,9 +75,8 @@ class MidiTxBuffer
     }
 
   private:
-    size_t   size_;
-    uint8_t* buf_;
-    size_t   capacity_;
-    uint8_t  last_status_;
+    size_t  size_;
+    uint8_t buf_[kSize];
+    uint8_t last_status_;
 };
-}
+} // namespace daisy

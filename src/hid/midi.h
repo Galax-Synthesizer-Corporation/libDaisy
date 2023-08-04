@@ -57,10 +57,6 @@ class MidiUartTransport
          */
         size_t rx_buffer_capacity;
 
-        // TODO: Docs, but this is same as above minus DMA memory requirement
-        uint8_t* tx_buffer;
-        size_t   tx_buffer_capacity;
-
         Config();
     };
 
@@ -83,8 +79,6 @@ class MidiUartTransport
 
         rx_buffer_          = config.rx_buffer;
         rx_buffer_capacity_ = config.rx_buffer_capacity;
-
-        tx_buffer_.Init(config.tx_buffer, config.tx_buffer_capacity);
 
         /** zero the rx buffer to ensure emptiness regardless of source memory */
         std::fill(rx_buffer_, rx_buffer_ + rx_buffer_capacity_, 0);
@@ -112,29 +106,17 @@ class MidiUartTransport
     /** @brief This is a no-op for UART transport - Rx is via DMA callback with circular buffer */
     inline void FlushRx() {}
 
-    inline bool WriteMessage(const MidiTxMessage& message)
-    {
-        if(!tx_buffer_.IsWriteable(message.size))
-            return false;
-        return tx_buffer_.WriteMessage(message.data, message.size);
-    }
 
-    inline void Transmit()
+    /** @brief sends the buffer of bytes out of the UART peripheral */
+    inline void Tx(uint8_t* buff, size_t size)
     {
-        if(!tx_buffer_.IsEmpty())
-        {
-            uart_.BlockingTransmit(const_cast<uint8_t*>(tx_buffer_.GetData()),
-                                   tx_buffer_.GetSize(),
-                                   10);
-            tx_buffer_.Consume();
-        }
+        uart_.BlockingTransmit(buff, size, 10);
     }
 
   private:
     UartHandler         uart_;
     uint8_t*            rx_buffer_;
     size_t              rx_buffer_capacity_;
-    MidiTxBuffer        tx_buffer_;
     void*               parse_context_;
     MidiRxParseCallback parse_callback_;
 
@@ -175,9 +157,10 @@ class MidiUartTransport
     @ingroup midi
 */
 template <typename Transport,
-          size_t KRxEventQueueSize    = 128,
-          size_t kTxEventQueueSize    = 128,
-          size_t kTxISREventQueueSize = 64>
+          size_t KRxEventQueueSize      = 128,
+          size_t kTxMessageQueueSize    = 128,
+          size_t kTxISRMessageQueueSize = 64,
+          size_t kTxBufferSize          = 256>
 class MidiHandler
 {
   public:
@@ -253,7 +236,7 @@ class MidiHandler
         while(!tx_msg_q_isr_.IsEmpty())
         {
             msg = tx_msg_q_isr_.Front();
-            if(!transport_.WriteMessage(msg))
+            if(!tx_buffer_.WriteMessage(msg.data, msg.size))
             {
                 break;
             }
@@ -262,13 +245,18 @@ class MidiHandler
         while(!tx_msg_q_.IsEmpty())
         {
             msg = tx_msg_q_.Front();
-            if(!transport_.WriteMessage(msg))
+            if(!tx_buffer_.WriteMessage(msg.data, msg.size))
             {
                 break;
             }
             tx_msg_q_.PopFront();
         }
-        transport_.Transmit();
+        if(!tx_buffer_.IsEmpty())
+        {
+            transport_.Tx(const_cast<uint8_t*>(tx_buffer_.GetData()),
+                          tx_buffer_.GetSize());
+            tx_buffer_.Consume();
+        }
     }
 
     /** Feed in bytes to parser state machine from an external source.
@@ -287,12 +275,14 @@ class MidiHandler
     }
 
   private:
-    Config                                    config_;
-    Transport                                 transport_;
-    MidiParser                                parser_;
-    FIFO<MidiEvent, KRxEventQueueSize>        rx_event_q_;
-    FIFO<MidiTxMessage, kTxEventQueueSize>    tx_msg_q_;
-    FIFO<MidiTxMessage, kTxISREventQueueSize> tx_msg_q_isr_;
+    Config     config_;
+    Transport  transport_;
+    MidiParser parser_;
+
+    FIFO<MidiEvent, KRxEventQueueSize>          rx_event_q_;
+    FIFO<MidiTxMessage, kTxMessageQueueSize>    tx_msg_q_;
+    FIFO<MidiTxMessage, kTxISRMessageQueueSize> tx_msg_q_isr_;
+    MidiTxBuffer<kTxBufferSize>                 tx_buffer_;
 
     static void ParseCallback(uint8_t* data, size_t size, void* context)
     {
