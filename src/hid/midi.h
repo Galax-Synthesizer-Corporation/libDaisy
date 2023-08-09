@@ -157,9 +157,9 @@ class MidiUartTransport
     @ingroup midi
 */
 template <typename Transport,
-          size_t KRxEventQueueSize      = 128,
-          size_t kTxMessageQueueSize    = 128,
-          size_t kTxISRMessageQueueSize = 64,
+          size_t KRxEventQueueSize      = 64,
+          size_t kTxMessageQueueSize    = 64,
+          size_t kTxISRMessageQueueSize = 32,
           size_t kTxBufferSize          = 256>
 class MidiHandler
 {
@@ -231,32 +231,10 @@ class MidiHandler
     /** Transmit enqueued messages*/
     void TransmitMessages()
     {
-        MidiTxMessage msg;
-        // TODO: Concat data, running status
-        while(!tx_msg_q_isr_.IsEmpty())
-        {
-            msg = tx_msg_q_isr_.Front();
-            if(!tx_buffer_.WriteMessage(msg.data, msg.size))
-            {
-                break;
-            }
-            tx_msg_q_isr_.PopFront();
-        }
-        while(!tx_msg_q_.IsEmpty())
-        {
-            msg = tx_msg_q_.Front();
-            if(!tx_buffer_.WriteMessage(msg.data, msg.size))
-            {
-                break;
-            }
-            tx_msg_q_.PopFront();
-        }
-        if(!tx_buffer_.IsEmpty())
-        {
-            transport_.Tx(const_cast<uint8_t*>(tx_buffer_.GetData()),
-                          tx_buffer_.GetSize());
-            tx_buffer_.Consume();
-        }
+        // First process and transmit ISR queue
+        processAndTransmitMessageQueue(tx_msg_q_isr_);
+        // Then non-ISR queue
+        processAndTransmitMessageQueue(tx_msg_q_);
     }
 
     /** Feed in bytes to parser state machine from an external source.
@@ -290,6 +268,29 @@ class MidiHandler
         for(size_t i = 0; i < size; i++)
         {
             handler->Parse(data[i]);
+        }
+    }
+
+    template <typename Queue>
+    void processAndTransmitMessageQueue(Queue& queue)
+    {
+        MidiTxMessage msg;
+        while(!queue.IsEmpty())
+        {
+            msg = queue.Front();
+            // If we can't fit this message, don't pop it,
+            // the tx buffer is full
+            if(!tx_buffer_.WriteMessage(msg.data, msg.size))
+            {
+                break;
+            }
+            queue.PopFront();
+        }
+        if(!tx_buffer_.IsEmpty())
+        {
+            transport_.Tx(const_cast<uint8_t*>(tx_buffer_.GetData()),
+                          tx_buffer_.GetSize());
+            tx_buffer_.Consume();
         }
     }
 };
