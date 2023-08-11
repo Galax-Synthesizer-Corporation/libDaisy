@@ -33,10 +33,11 @@ class MidiTxBuffer
     MidiTxBuffer(){};
     ~MidiTxBuffer(){};
 
-    void Init()
+    void Init(bool running_status_enabled)
     {
         size_        = 0;
         last_status_ = 0;
+        rs_enabled_  = running_status_enabled;
     }
 
     bool IsWriteable(size_t added) const { return size_ + added < kSize; }
@@ -49,7 +50,8 @@ class MidiTxBuffer
         if(!IsWriteable(size))
             return false;
 
-        const bool is_valid_for_running_status = size > 1 && data[0] != 0xf0;
+        const bool is_valid_for_running_status
+            = rs_enabled_ && size > 1 && data[0] != 0xf0;
 
         if(is_valid_for_running_status && data[0] == last_status_)
         {
@@ -68,7 +70,7 @@ class MidiTxBuffer
     const uint8_t* GetData() const { return buf_; }
     size_t         GetSize() const { return size_; }
 
-    void           Consume()
+    void Consume()
     {
         size_        = 0;
         last_status_ = 0;
@@ -78,5 +80,6 @@ class MidiTxBuffer
     size_t  size_;
     uint8_t buf_[kSize];
     uint8_t last_status_;
+    bool    rs_enabled_;
 };
 } // namespace daisy

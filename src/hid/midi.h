@@ -170,6 +170,7 @@ class MidiHandler
     struct Config
     {
         typename Transport::Config transport_config;
+        bool                       running_status_enabled = false;
     };
 
     /** Initializes the MidiHandler
@@ -179,6 +180,7 @@ class MidiHandler
     {
         config_ = config;
         transport_.Init(config_.transport_config);
+        tx_buffer_.Init(config_.running_status_enabled);
         parser_.Init();
     }
 
