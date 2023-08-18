@@ -21,7 +21,7 @@ namespace daisy
 class GPIO
 {
   public:
-    typedef void (*InterruptCallback)(Pin pin);
+    typedef void (*InterruptCallback)(void *ctx);
 
     /** @brief Mode of operation for the specified GPIO */
     enum class Mode
@@ -67,8 +67,6 @@ class GPIO
         Pull  pull;
         Speed speed;
 
-        InterruptCallback isr_callback;
-
         // priority range 0-15, lower number = higher priority
         uint32_t isr_preempt_priority;
         uint32_t isr_sub_priority;
@@ -81,7 +79,6 @@ class GPIO
           mode(Mode::INPUT),
           pull(Pull::NOPULL),
           speed(Speed::LOW),
-          isr_callback(nullptr),
           isr_preempt_priority(0),
           isr_sub_priority(0)
         {
@@ -107,13 +104,11 @@ class GPIO
      *  @param m Mode specifying the behavior of the GPIO (input, output, etc.). Defaults to Mode::INPUT
      *  @param pu Pull up/down state for the GPIO. Defaults to Pull::NOPULL
      *  @param sp Speed setting for drive strength/slew rate. Defaults to Speed::Slow
-     *  @param cb Callback for interrupt pin modes. Defaults to nullptr.
     */
-    void Init(Pin               p,
-              Mode              m  = Mode::INPUT,
-              Pull              pu = Pull::NOPULL,
-              Speed             sp = Speed::LOW,
-              InterruptCallback cb = nullptr);
+    void Init(Pin   p,
+              Mode  m  = Mode::INPUT,
+              Pull  pu = Pull::NOPULL,
+              Speed sp = Speed::LOW);
 
     /** @brief Deinitializes the GPIO pin */
     void DeInit();
@@ -136,7 +131,7 @@ class GPIO
     /** Return a reference to the internal Config struct */
     Config &GetConfig() { return cfg_; }
 
-    void SetInterruptCallback(InterruptCallback cb);
+    void SetInterruptCallback(InterruptCallback cb, void *ctx);
 
   private:
     /** This will internally be cast to the

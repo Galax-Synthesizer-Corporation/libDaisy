@@ -49,31 +49,41 @@ class GPIOInterruptHandler
         }
     }
 
-    void RegisterPin(const Pin pin, GPIO::InterruptCallback callback)
+    void RegisterPin(const Pin pin, GPIO::InterruptCallback callback, void *ctx)
     {
-        auto ch             = GetChannel(pin);
-        exti_pins_[ch]      = pin;
-        exti_callbacks_[ch] = callback;
+        auto  ch   = GetChannel(pin);
+        auto &data = exti_isr_data_[ch];
+        data.pin   = pin;
+        data.cb    = callback;
+        data.ctx   = ctx;
     }
 
     void HandleInterrupt(const EXTIChannel ch)
     {
         // NOTE: This strategy only supports one pin per EXTI -
         // it would not be hard to extend to support multiple pins
-        Pin      pin   = exti_pins_[ch];
-        uint32_t stpin = (1 << pin.pin);
+        const auto &data  = exti_isr_data_[ch];
+        Pin         pin   = data.pin;
+        uint32_t    stpin = (1 << pin.pin);
         if(__HAL_GPIO_EXTI_GET_IT(stpin) != 0x00U)
         {
             __HAL_GPIO_EXTI_CLEAR_IT(stpin);
-            auto callback = exti_callbacks_[ch];
+            auto callback = data.cb;
             if(callback != nullptr)
-                callback(pin);
+                callback(data.ctx);
         }
     }
 
   private:
-    Pin                     exti_pins_[EXTI_NUM_CHANNELS];
-    GPIO::InterruptCallback exti_callbacks_[EXTI_NUM_CHANNELS];
+    struct ExtiIsrData
+    {
+        Pin                     pin;
+        GPIO::InterruptCallback cb;
+        void                   *ctx;
+
+        ExtiIsrData() : pin(Pin()), cb(nullptr), ctx(nullptr) {}
+    };
+    ExtiIsrData exti_isr_data_[EXTI_NUM_CHANNELS];
 };
 
 static GPIOInterruptHandler gpio_intr_handler;
@@ -147,7 +157,7 @@ void GPIO::Init(const Config &cfg)
         auto &handler        = gpio_intr_handler;
         auto  exti_irqn_type = handler.GetIRQNType(cfg_.pin);
 
-        handler.RegisterPin(cfg_.pin, cfg_.isr_callback);
+        handler.RegisterPin(cfg_.pin, nullptr, nullptr);
 
         HAL_NVIC_SetPriority(exti_irqn_type,
                              std::min(cfg_.isr_preempt_priority, (uint32_t)15),
@@ -163,14 +173,13 @@ void GPIO::Init(Pin p, const Config &cfg)
     cfg_.pin = p;
     Init(cfg_);
 }
-void GPIO::Init(Pin p, Mode m, Pull pu, Speed sp, InterruptCallback cb)
+void GPIO::Init(Pin p, Mode m, Pull pu, Speed sp)
 {
     // Populate Config struct, and init with overload
     cfg_.pin          = p;
     cfg_.mode         = m;
     cfg_.pull         = pu;
     cfg_.speed        = sp;
-    cfg_.isr_callback = cb;
     Init(cfg_);
 }
 
@@ -195,11 +204,10 @@ void GPIO::Toggle()
     HAL_GPIO_TogglePin((GPIO_TypeDef *)port_base_addr_, (1 << cfg_.pin.pin));
 }
 
-void GPIO::SetInterruptCallback(InterruptCallback cb)
+void GPIO::SetInterruptCallback(InterruptCallback cb, void *ctx)
 {
     ScopedIrqBlocker block;
-    cfg_.isr_callback = cb;
-    gpio_intr_handler.RegisterPin(cfg_.pin, cb);
+    gpio_intr_handler.RegisterPin(cfg_.pin, cb, ctx);
 }
 
 uint32_t *GPIO::GetGPIOBaseRegister()
