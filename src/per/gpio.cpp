@@ -1,5 +1,7 @@
 #include "gpio.h"
 #include "stm32h7xx_hal.h"
+#include "util/scopedirqblocker.h"
+#include <algorithm>
 
 using namespace daisy;
 
@@ -20,12 +22,6 @@ class GPIOInterruptHandler
         EXTI15_10,
         EXTI_NUM_CHANNELS
     };
-
-    static GPIOInterruptHandler &instance()
-    {
-        static GPIOInterruptHandler instance;
-        return instance;
-    }
 
     EXTIChannel GetChannel(const Pin pin)
     {
@@ -62,6 +58,8 @@ class GPIOInterruptHandler
 
     void HandleInterrupt(const EXTIChannel ch)
     {
+        // NOTE: This strategy only supports one pin per EXTI -
+        // it would not be hard to extend to support multiple pins
         Pin      pin   = exti_pins_[ch];
         uint32_t stpin = (1 << pin.pin);
         if(__HAL_GPIO_EXTI_GET_IT(stpin) != 0x00U)
@@ -77,6 +75,8 @@ class GPIOInterruptHandler
     Pin                     exti_pins_[EXTI_NUM_CHANNELS];
     GPIO::InterruptCallback exti_callbacks_[EXTI_NUM_CHANNELS];
 };
+
+static GPIOInterruptHandler gpio_intr_handler;
 
 } // namespace daisy
 
@@ -144,13 +144,14 @@ void GPIO::Init(const Config &cfg)
        || cfg_.mode == Mode::INTERRUPT_FALLING
        || cfg_.mode == Mode::INTERRUPT_BOTH)
     {
-        auto &handler        = GPIOInterruptHandler::instance();
+        auto &handler        = gpio_intr_handler;
         auto  exti_irqn_type = handler.GetIRQNType(cfg_.pin);
 
-        handler.RegisterPin(cfg_.pin, cfg_.callback);
+        handler.RegisterPin(cfg_.pin, cfg_.isr_callback);
 
-        // TODO: Set priorities from cfg
-        HAL_NVIC_SetPriority(exti_irqn_type, 0, 0);
+        HAL_NVIC_SetPriority(exti_irqn_type,
+                             std::min(cfg_.isr_preempt_priority, (uint32_t)15),
+                             std::min(cfg_.isr_sub_priority, (uint32_t)15));
         HAL_NVIC_EnableIRQ(exti_irqn_type);
     }
 }
@@ -165,11 +166,11 @@ void GPIO::Init(Pin p, const Config &cfg)
 void GPIO::Init(Pin p, Mode m, Pull pu, Speed sp, InterruptCallback cb)
 {
     // Populate Config struct, and init with overload
-    cfg_.pin      = p;
-    cfg_.mode     = m;
-    cfg_.pull     = pu;
-    cfg_.speed    = sp;
-    cfg_.callback = cb;
+    cfg_.pin          = p;
+    cfg_.mode         = m;
+    cfg_.pull         = pu;
+    cfg_.speed        = sp;
+    cfg_.isr_callback = cb;
     Init(cfg_);
 }
 
@@ -192,6 +193,13 @@ void GPIO::Write(bool state)
 void GPIO::Toggle()
 {
     HAL_GPIO_TogglePin((GPIO_TypeDef *)port_base_addr_, (1 << cfg_.pin.pin));
+}
+
+void GPIO::SetInterruptCallback(InterruptCallback cb)
+{
+    ScopedIrqBlocker block;
+    cfg_.isr_callback = cb;
+    gpio_intr_handler.RegisterPin(cfg_.pin, cb);
 }
 
 uint32_t *GPIO::GetGPIOBaseRegister()
@@ -307,43 +315,36 @@ extern "C"
 {
     void EXTI0_IRQHandler(void)
     {
-        GPIOInterruptHandler::instance().HandleInterrupt(
-            GPIOInterruptHandler::EXTI0);
+        gpio_intr_handler.HandleInterrupt(GPIOInterruptHandler::EXTI0);
     }
 
     void EXTI1_IRQHandler(void)
     {
-        GPIOInterruptHandler::instance().HandleInterrupt(
-            GPIOInterruptHandler::EXTI1);
+        gpio_intr_handler.HandleInterrupt(GPIOInterruptHandler::EXTI1);
     }
 
     void EXTI2_IRQHandler(void)
     {
-        GPIOInterruptHandler::instance().HandleInterrupt(
-            GPIOInterruptHandler::EXTI2);
+        gpio_intr_handler.HandleInterrupt(GPIOInterruptHandler::EXTI2);
     }
 
     void EXTI3_IRQHandler(void)
     {
-        GPIOInterruptHandler::instance().HandleInterrupt(
-            GPIOInterruptHandler::EXTI3);
+        gpio_intr_handler.HandleInterrupt(GPIOInterruptHandler::EXTI3);
     }
 
     void EXTI4_IRQHandler(void)
     {
-        GPIOInterruptHandler::instance().HandleInterrupt(
-            GPIOInterruptHandler::EXTI4);
+        gpio_intr_handler.HandleInterrupt(GPIOInterruptHandler::EXTI4);
     }
 
     void EXTI9_5_IRQHandler(void)
     {
-        GPIOInterruptHandler::instance().HandleInterrupt(
-            GPIOInterruptHandler::EXTI9_5);
+        gpio_intr_handler.HandleInterrupt(GPIOInterruptHandler::EXTI9_5);
     }
 
     void EXTI15_10_IRQHandler(void)
     {
-        GPIOInterruptHandler::instance().HandleInterrupt(
-            GPIOInterruptHandler::EXTI15_10);
+        gpio_intr_handler.HandleInterrupt(GPIOInterruptHandler::EXTI15_10);
     }
 }
