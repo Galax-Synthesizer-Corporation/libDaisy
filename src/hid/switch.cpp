@@ -4,6 +4,7 @@ using namespace daisy;
 void Switch::InitManual()
 {
     Init(Pin());
+    manual_input_ = true;
 }
 
 void Switch::Init(dsy_gpio_pin pin,
@@ -12,10 +13,11 @@ void Switch::Init(dsy_gpio_pin pin,
                   Polarity     pol,
                   Pull         pu)
 {
-    last_update_ = System::GetNow();
-    updated_     = false;
-    state_       = 0x00;
-    t_           = t;
+    manual_input_ = false;
+    last_update_  = System::GetNow();
+    updated_      = false;
+    state_        = 0x00;
+    t_            = t;
     // Flip may seem opposite to logical direction,
     // but here 1 is pressed, 0 is not.
     flip_         = pol == POLARITY_INVERTED ? true : false;
@@ -44,6 +46,8 @@ void Switch::Debounce()
 
 void Switch::DebounceManual(bool on)
 {
+    last_input_ = on;
+
     // update no faster than 1kHz
     uint32_t now = System::GetNow();
     updated_     = false;
