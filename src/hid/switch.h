@@ -87,6 +87,7 @@ class Switch
     /** \return true if the button is held down, without debouncing */
     inline bool RawState()
     {
+        if (manual_input_) return last_input_;
         return flip_ ? !dsy_gpio_read(&hw_gpio_) : dsy_gpio_read(&hw_gpio_);
     }
 
@@ -102,8 +103,10 @@ class Switch
     inline void SetUpdateRate(float update_rate) {}
 
   private:
+    bool     manual_input_;
     uint32_t last_update_;
     bool     updated_;
+    bool     last_input_;
     Type     t_;
     dsy_gpio hw_gpio_;
     uint8_t  state_;

@@ -1,6 +1,10 @@
 #include "stm32h7xx_hal.h"
 #include "sys/dma.h"
 
+#define DSY_DMA_DEFAULT_PRIORITY 1
+#define DSY_DMA_AUDIO_PRIORITY   DSY_DMA_DEFAULT_PRIORITY
+#define DSY_DMA_ADC_PRIORITY     DSY_DMA_DEFAULT_PRIORITY
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -13,44 +17,46 @@ extern "C"
         __HAL_RCC_DMA2_CLK_ENABLE();
 
         // DMA interrupt init
+        // The next 4 DMA streams are used for audio codec I/O
         // DMA1_Stream0_IRQn interrupt configuration
-        HAL_NVIC_SetPriority(DMA1_Stream0_IRQn, 0, 0);
+        HAL_NVIC_SetPriority(DMA1_Stream0_IRQn, DSY_DMA_AUDIO_PRIORITY, 0);
         HAL_NVIC_EnableIRQ(DMA1_Stream0_IRQn);
         // DMA1_Stream1_IRQn interrupt configuration
-        HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 0, 0);
+        HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, DSY_DMA_AUDIO_PRIORITY, 0);
         HAL_NVIC_EnableIRQ(DMA1_Stream1_IRQn);
-        // DMA1_Stream2_IRQn interrupt configuration
-        HAL_NVIC_SetPriority(DMA1_Stream2_IRQn, 0, 0);
-        HAL_NVIC_EnableIRQ(DMA1_Stream2_IRQn);
         // DMA1_Stream3_IRQn interrupt configuration
-        HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, 0, 0);
+        HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, DSY_DMA_AUDIO_PRIORITY, 0);
         HAL_NVIC_EnableIRQ(DMA1_Stream3_IRQn);
         // DMA1_Stream4_IRQn interrupt configuration
-        HAL_NVIC_SetPriority(DMA1_Stream4_IRQn, 0, 0);
+        HAL_NVIC_SetPriority(DMA1_Stream4_IRQn, DSY_DMA_AUDIO_PRIORITY, 0);
         HAL_NVIC_EnableIRQ(DMA1_Stream4_IRQn);
+        // DMA1_Stream2_IRQn interrupt configuration
+        // This is used for the ADC Handle DMA
+        HAL_NVIC_SetPriority(DMA1_Stream2_IRQn, DSY_DMA_ADC_PRIORITY, 0);
+        HAL_NVIC_EnableIRQ(DMA1_Stream2_IRQn);
         // DMA1_Stream5_IRQn and DMA2_Stream4_IRQn interrupt configuration for uart rx and tx
-        HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 0, 0);
+        HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, DSY_DMA_DEFAULT_PRIORITY, 0);
         HAL_NVIC_EnableIRQ(DMA1_Stream5_IRQn);
-        HAL_NVIC_SetPriority(DMA2_Stream4_IRQn, 0, 0);
+        HAL_NVIC_SetPriority(DMA2_Stream4_IRQn, DSY_DMA_DEFAULT_PRIORITY, 0);
         HAL_NVIC_EnableIRQ(DMA2_Stream4_IRQn);
         // DMA1_Stream6_IRQn interrupt configuration for I2C
-        HAL_NVIC_SetPriority(DMA1_Stream6_IRQn, 0, 0);
+        HAL_NVIC_SetPriority(DMA1_Stream6_IRQn, DSY_DMA_DEFAULT_PRIORITY, 0);
         HAL_NVIC_EnableIRQ(DMA1_Stream6_IRQn);
         // DMA2_Stream0_IRQn, interrupt configuration for DAC Ch1
-        HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
+        HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, DSY_DMA_DEFAULT_PRIORITY, 0);
         HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
         // DMA2_Stream1_IRQn, interrupt configuration for DAC Ch2
-        HAL_NVIC_SetPriority(DMA2_Stream1_IRQn, 0, 0);
+        HAL_NVIC_SetPriority(DMA2_Stream1_IRQn, DSY_DMA_DEFAULT_PRIORITY, 0);
         HAL_NVIC_EnableIRQ(DMA2_Stream1_IRQn);
 
         // DMA2_Stream2_IRQn and DMA2_Stream3_IRQn interrupt configuration for SPI
-        HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, 0, 0);
+        HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, DSY_DMA_DEFAULT_PRIORITY, 0);
         HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
-        HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 0, 0);
+        HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, DSY_DMA_DEFAULT_PRIORITY, 0);
         HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
 
         // DMA2_Stream5 used for TIM Channel operation
-        HAL_NVIC_SetPriority(DMA2_Stream5_IRQn, 0, 0);
+        HAL_NVIC_SetPriority(DMA2_Stream5_IRQn, DSY_DMA_DEFAULT_PRIORITY, 0);
         HAL_NVIC_EnableIRQ(DMA2_Stream5_IRQn);
     }
 
