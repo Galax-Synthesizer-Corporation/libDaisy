@@ -1,6 +1,9 @@
 #include "stm32h7xx_hal.h"
 #include "sys/dma.h"
 
+// This is set to one level lower priority (+1 higher value)
+// than the highest (zero) by default so exti interrupts
+// for analog clocking can take priority
 #define DSY_DMA_DEFAULT_PRIORITY 1
 #define DSY_DMA_AUDIO_PRIORITY   DSY_DMA_DEFAULT_PRIORITY
 #define DSY_DMA_ADC_PRIORITY     DSY_DMA_DEFAULT_PRIORITY
