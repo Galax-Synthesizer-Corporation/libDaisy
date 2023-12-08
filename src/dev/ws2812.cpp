@@ -42,7 +42,6 @@ class Ws2812::Impl
         }
     }
 
-
   private:
     TimerHandle timer_;
     TimChannel  pwm_;
@@ -88,9 +87,13 @@ class Ws2812::Impl
         {
             /** Grab G, R, B for filling bytes */
             // TODO: Alt color order?
-            uint8_t g = led_data_[i][1];
-            uint8_t r = led_data_[i][0];
-            uint8_t b = led_data_[i][2];
+            uint8_t g = (led_data_[i][1] * brightness_[i]) >> 8;
+            uint8_t r = (led_data_[i][0] * brightness_[i]) >> 8;
+            uint8_t b = (led_data_[i][2] * brightness_[i]) >> 8;
+
+            g = gammaCorrectionLUT_8Bit_[g];
+            r = gammaCorrectionLUT_8Bit_[r];
+            b = gammaCorrectionLUT_8Bit_[b];
 
             size_t data_index = i * 3 * 8 + 8;
             populateBits(g, &dma_buffer_[data_index]);
