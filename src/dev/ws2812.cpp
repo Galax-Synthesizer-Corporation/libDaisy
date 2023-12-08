@@ -3,6 +3,7 @@
 #include "sys/system.h"
 #include <algorithm>
 #include <cmath>
+#include <cmsis_gcc.h>
 
 using namespace daisy;
 
@@ -11,6 +12,9 @@ namespace daisy
 // 3 colors * 8 values per LED plus 8 leading/trailing trailing zeros
 static constexpr size_t kPwmOutBufSize = Ws2812::kMaxNumLEDs * 3 * 8 + 16;
 static uint32_t DMA_BUFFER_MEM_SECTION pwm_out_buf[kPwmOutBufSize];
+
+static constexpr uint8_t kDitherBits = 2;
+static_assert(kDitherBits <= 4);
 
 /** Private impl class for single static shared instance */
 class Ws2812::Impl
@@ -59,6 +63,7 @@ class Ws2812::Impl
     bool dma_ready_;
 
     uint8_t gammaCorrectionLUT_8Bit_[256];
+    int16_t dither_;
 
     static void OnTransferEnd(void* context)
     {
@@ -87,10 +92,20 @@ class Ws2812::Impl
         {
             /** Grab G, R, B for filling bytes */
             // TODO: Alt color order?
-            uint8_t g = (led_data_[i][1] * brightness_[i]) >> 8;
-            uint8_t r = (led_data_[i][0] * brightness_[i]) >> 8;
-            uint8_t b = (led_data_[i][2] * brightness_[i]) >> 8;
+            uint8_t shift = 8 - kDitherBits;
 
+            // Apply 8-bit brightness and shift according to dither depth
+            // (i.e. if 2 bits of dither, we shift so multiplication is a 10-bit number)
+            uint16_t g = (led_data_[i][1] * brightness_[i]) >> shift;
+            uint16_t r = (led_data_[i][0] * brightness_[i]) >> shift;
+            uint16_t b = (led_data_[i][2] * brightness_[i]) >> shift;
+
+            // apply dither and truncate
+            g = g > 0 ? __USAT((g + dither_) >> kDitherBits, 8) : 0;
+            r = r > 0 ? __USAT((r + dither_) >> kDitherBits, 8) : 0;
+            b = b > 0 ? __USAT((b + dither_) >> kDitherBits, 8) : 0;
+
+            // gamma correction
             g = gammaCorrectionLUT_8Bit_[g];
             r = gammaCorrectionLUT_8Bit_[r];
             b = gammaCorrectionLUT_8Bit_[b];
@@ -100,6 +115,9 @@ class Ws2812::Impl
             populateBits(r, &dma_buffer_[data_index + 8]);
             populateBits(b, &dma_buffer_[data_index + 16]);
         }
+
+        dither_ = (dither_ + 1) & ((1 << kDitherBits) - 1);
+        // dither_ = rand() & ((1 << kDitherBits) - 1);
     }
 };
 
@@ -147,6 +165,8 @@ void Ws2812::Impl::Init(const Ws2812::Config& config)
     dma_buffer_size_ = num_leds_ * 3 * 8 + 16;
     dma_ready_       = true;
 
+    dither_ = 0;
+
     for(size_t i = 0; i < dma_buffer_size_; i++)
     {
         dma_buffer_[i] = 0;
@@ -180,6 +200,7 @@ void Ws2812::SetGamma(float gamma)
 
 void Ws2812::Set(uint8_t idx, uint8_t r, uint8_t g, uint8_t b, float brightness)
 {
+    brightness = std::min(std::max(brightness, 0.0f), 1.0f);
     pimpl_->Set(idx, r, g, b, brightness * 255);
 }
 
