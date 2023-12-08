@@ -33,10 +33,11 @@ class Ws2812
     ~Ws2812() = default;
 
     void Init(const Config& config);
+    void SetGamma(float gamma);
 
-    void Set(uint8_t idx, uint8_t r, uint8_t g, uint8_t b);
-    void Set(uint8_t idx, uint32_t color);
-    void Fill(uint32_t color);
+    void Set(uint8_t idx, uint8_t r, uint8_t g, uint8_t b, float brightness = 1.0f);
+    void Set(uint8_t idx, uint32_t color, float brightness = 1.0f);
+    void Fill(uint32_t color, float brightness = 1.0f);
     void Clear();
 
     void Show();
