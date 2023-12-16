@@ -187,6 +187,7 @@ CPPFLAGS += \
 -fno-unwind-tables \
 -fno-rtti \
 -funroll-loops \
+-ffast-math \
 -Wno-register
 
 C_STANDARD = -std=gnu11
