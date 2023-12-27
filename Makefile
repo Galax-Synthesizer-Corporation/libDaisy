@@ -316,7 +316,7 @@ CPP_WARNINGS += -Wno-register
 # compile gcc flags
 ASFLAGS = $(MCU) $(AS_INCLUDES) $(AS_DEFS) -ggdb $(WARNINGS) $(OPT) -fdata-sections -ffunction-sections
 
-CFLAGS = $(MCU) $(C_INCLUDES) $(C_DEFS) -ggdb $(WARNINGS) $(OPT) -fasm -fdata-sections -ffunction-sections
+CFLAGS = $(MCU) $(C_INCLUDES) $(C_DEFS) -ggdb $(WARNINGS) $(OPT) -fasm -fdata-sections -ffunction-sections -funroll-loops -ffast-math
 
 ifeq ($(DEBUG), 1)
 CFLAGS += -g -ggdb
