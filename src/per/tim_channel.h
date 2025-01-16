@@ -87,7 +87,7 @@ class TimChannel
     /** Starts the DMA for the given buffer, calling the callback
      *  when the transmission is complete.
      */
-    void StartDma(uint32_t*                  data,
+    void StartDma(uint16_t*                  data,
                   size_t                     size,
                   EndTransmissionFunctionPtr callback   = nullptr,
                   void*                      cb_context = nullptr);

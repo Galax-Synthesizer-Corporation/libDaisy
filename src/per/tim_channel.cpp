@@ -374,14 +374,14 @@ void TimChannel::SetPwm(uint32_t val)
     __HAL_TIM_SET_COMPARE(&globaltim, GetHalChannel(cfg_.chn), val);
 }
 
-void TimChannel::StartDma(uint32_t*                              data,
+void TimChannel::StartDma(uint16_t*                              data,
                           size_t                                 size,
                           TimChannel::EndTransmissionFunctionPtr callback,
                           void*                                  cb_context)
 {
     globalcb         = callback;
     globalcb_context = cb_context;
-    DSY_Modified_HAL_Start_DMA(&globaltim, GetHalChannel(cfg_.chn), data, size);
+    DSY_Modified_HAL_Start_DMA(&globaltim, GetHalChannel(cfg_.chn), (uint32_t*)data, size);
 }
 
 void TimChannel::StopDma()
@@ -469,8 +469,8 @@ void TimChannel::initDma()
     timhdma.Init.Direction           = DMA_MEMORY_TO_PERIPH;
     timhdma.Init.PeriphInc           = DMA_PINC_DISABLE;
     timhdma.Init.MemInc              = DMA_MINC_ENABLE;
-    timhdma.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
-    timhdma.Init.MemDataAlignment    = DMA_MDATAALIGN_WORD;
+    timhdma.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
+    timhdma.Init.MemDataAlignment    = DMA_MDATAALIGN_HALFWORD;
     timhdma.Init.Mode                = DMA_NORMAL;
     timhdma.Init.Priority            = DMA_PRIORITY_LOW;
     timhdma.Init.FIFOMode            = DMA_FIFOMODE_DISABLE;

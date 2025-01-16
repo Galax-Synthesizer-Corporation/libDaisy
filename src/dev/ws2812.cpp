@@ -11,7 +11,7 @@ namespace daisy
 {
 // 3 colors * 8 values per LED plus 8 leading/trailing trailing zeros
 static constexpr size_t kPwmOutBufSize = Ws2812::kMaxNumLEDs * 3 * 8 + 16;
-static uint32_t DMA_BUFFER_MEM_SECTION pwm_out_buf[kPwmOutBufSize];
+static uint16_t DMA_BUFFER_MEM_SECTION pwm_out_buf[kPwmOutBufSize];
 
 static constexpr uint8_t kDitherBits = 2;
 static_assert(kDitherBits <= 4);
@@ -54,7 +54,7 @@ class Ws2812::Impl
     uint32_t zero_period_;
     uint32_t one_period_;
 
-    uint32_t* dma_buffer_;
+    uint16_t* dma_buffer_;
     size_t    dma_buffer_size_;
 
     uint8_t led_data_[Ws2812::kMaxNumLEDs][3]; /**< RGB data */
@@ -74,7 +74,7 @@ class Ws2812::Impl
         pimpl->dma_ready_ = true;
     }
 
-    void populateBits(uint8_t color_val, uint32_t* buff)
+    void populateBits(uint8_t color_val, uint16_t* buff)
     {
         uint8_t mask = 0x80;
         for(int i = 0; i < 8; i++)
