@@ -111,13 +111,14 @@ class LoggerImpl<LOGGER_SEMIHOST>
   public:
     /** Initialize logging destination
      */
-    static void Init() {}
+    static void Init();
 
     /** Transmit a block of data
      */
     static bool Transmit(const void* buffer, size_t bytes)
     {
-        write(STDOUT_FILENO, buffer, bytes);
+        if(System::IsDebuggerAttached())
+            write(STDOUT_FILENO, buffer, bytes);
         return true;
     }
 };

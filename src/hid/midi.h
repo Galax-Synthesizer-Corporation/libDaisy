@@ -37,8 +37,8 @@ class MidiUartTransport
     struct Config
     {
         UartHandler::Config::Peripheral periph;
-        dsy_gpio_pin                    rx;
-        dsy_gpio_pin                    tx;
+        Pin                             rx;
+        Pin                             tx;
 
         /** Pointer to buffer for DMA UART rx byte transfer in background.
          *
@@ -210,28 +210,34 @@ class MidiHandler
      */
     bool HasEvents() const { return !rx_event_q_.IsEmpty(); }
 
+    bool RxActive() { return transport_.RxActive(); }
 
     /** Pops the oldest unhandled MidiEvent from the internal queue
     \return The event to be handled
      */
     MidiEvent PopEvent() { return rx_event_q_.PopFront(); }
 
-    /** SendMessage
-    Send raw bytes as message
+    /**
+        Immediately send raw bytes as message, bypassing queue
     */
-    void SendMessage(const MidiTxMessage& msg) { tx_msg_q_.PushBack(msg); }
+    void SendMessage(const uint8_t* bytes, size_t size)
+    {
+        transport_.Tx(const_cast<uint8_t*>(bytes), size);
+    }
+
+    void EnqueueMessage(const MidiTxMessage& msg) { tx_msg_q_.PushBack(msg); }
 
     /** Higher priority message queue for ISR (clock, etc)
      *  These are transmitted in FIFO order, but *before*
      *  the non-ISR message queue
      */
-    void SendMessageFromISR(const MidiTxMessage& msg)
+    void EnqueueMessageFromISR(const MidiTxMessage& msg)
     {
         tx_msg_q_isr_.PushBack(msg);
     }
 
     /** Transmit enqueued messages*/
-    void TransmitMessages()
+    void TransmitEnqueuedMessages()
     {
         // First process and transmit ISR queue
         processAndTransmitMessageQueue(tx_msg_q_isr_);

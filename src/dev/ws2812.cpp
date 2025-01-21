@@ -68,7 +68,7 @@ class Ws2812::Impl
     static void OnTransferEnd(void* context)
     {
         Ws2812::Impl* pimpl = reinterpret_cast<Ws2812::Impl*>(context);
-        pimpl->pwm_.StopDma();
+        // pimpl->pwm_.StopDma();
         // pimpl->pwm_.SetPwm(0);
         // pimpl->pwm_.Start();
         pimpl->dma_ready_ = true;

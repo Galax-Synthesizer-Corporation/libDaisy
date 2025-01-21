@@ -3,6 +3,7 @@
 #define DSY_TIM_H
 
 #include <cstdint>
+#include "stm32h7xx_hal.h"
 
 namespace daisy
 {
@@ -189,6 +190,9 @@ class TimerHandle
      *  @param data optional pointer to arbitrary data (defaults to nullptr)
     */
     void SetCallback(PeriodElapsedCallback cb, void* data = nullptr);
+
+    // For advanced usage
+    TIM_HandleTypeDef* GetHALHandle();
 
     class Impl;
 

@@ -231,6 +231,11 @@ class System
      */
     static constexpr uint32_t kQspiBootloaderOffset = 0x40000U;
 
+    /** Returns whether a serial wire debugger (e.g. STLink) is currently
+     * attached to the device and running in debugging mode
+     */
+    static bool IsDebuggerAttached();
+
   private:
     void   ConfigureClocks();
     void   ConfigureMpu();
