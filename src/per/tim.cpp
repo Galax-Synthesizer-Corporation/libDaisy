@@ -446,6 +446,10 @@ void TimerHandle::SetCallback(PeriodElapsedCallback cb, void* data)
     pimpl_->SetCallback(cb, data);
 }
 
+TIM_HandleTypeDef* TimerHandle::GetHALHandle()
+{
+    return &pimpl_->tim_hal_handle_;
+}
 
 } // namespace daisy
 
