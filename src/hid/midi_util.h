@@ -22,6 +22,7 @@ struct MidiTxMessage
     static MidiTxMessage PitchBend(uint8_t ch, int16_t bend);
     static MidiTxMessage SystemRealtimeClock();
     static MidiTxMessage SystemRealtimeStart();
+    static MidiTxMessage SystemRealtimeContinue();
     static MidiTxMessage SystemRealtimeStop();
     static MidiTxMessage SystemExclusive(const uint8_t* data, size_t size);
 };

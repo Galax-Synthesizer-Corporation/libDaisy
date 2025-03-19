@@ -64,6 +64,13 @@ MidiTxMessage MidiTxMessage::SystemRealtimeStart()
     msg.size    = 1;
     return msg;
 }
+MidiTxMessage MidiTxMessage::SystemRealtimeContinue()
+{
+    MidiTxMessage msg;
+    msg.data[0] = 0xfb;
+    msg.size    = 1;
+    return msg;
+}
 MidiTxMessage MidiTxMessage::SystemRealtimeStop()
 {
     MidiTxMessage msg;
