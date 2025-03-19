@@ -157,10 +157,10 @@ class MidiUartTransport
     @ingroup midi
 */
 template <typename Transport,
-          size_t KRxEventQueueSize      = 64,
-          size_t kTxMessageQueueSize    = 64,
-          size_t kTxISRMessageQueueSize = 32,
-          size_t kTxBufferSize          = 256>
+          size_t KRxEventQueueSize      = 256,
+          size_t kTxMessageQueueSize    = 256,
+          size_t kTxISRMessageQueueSize = 64,
+          size_t kTxBufferSize          = 1024>
 class MidiHandler
 {
   public:
