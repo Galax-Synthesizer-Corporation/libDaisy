@@ -8,7 +8,7 @@ namespace daisy
 /** @brief A potentiometer monitor that generates events in a UiEventQueue
  *  @author jelliesen
  *  @ingroup ui
- * 
+ *
  *  This class monitors a number of potentiometers and detects pot movements.
  *  When a movement is detected, an event is added to a UiEventQueue.
  *  Pots can be either "idle" or "moving" in which case different dead bands
@@ -18,9 +18,9 @@ namespace daisy
  *  template argument `numPots`. Each of the pots is identified by an ID number from
  *  `0 .. numPots - 1`. This number will also be used when events are posted to the
  *  UiEventQueue. It's suggested to define an enum in your project like this:
- *  
+ *
  *      enum PotId { potA = 0, potB = 1, potC = 2 };
- * 
+ *
  *  In different projects, diffent ways of reading the potentiometer positions will be
  *  used. That's why this class uses a generic backend that you'll have to write.
  *  The BackendType class will provide the source data for each potentiometer.
@@ -70,6 +70,7 @@ class PotMonitor
 
         for(uint32_t i = 0; i < numPots; i++)
         {
+            initialized_[i]      = false;
             lastValue_[i]        = 0.0;
             timeoutCounterMs_[i] = 0;
         }
@@ -130,7 +131,13 @@ class PotMonitor
     void ProcessPot(uint16_t id, float value, uint32_t timeDiffMs)
     {
         // currently moving?
-        if(timeoutCounterMs_[id] < timeout_)
+        if(!initialized_[id])
+        {
+            initialized_[id] = true;
+            lastValue_[id]   = value;
+            queue_->AddPotMoved(id, value);
+        }
+        else if(timeoutCounterMs_[id] < timeout_)
         {
             // check if pot has left the deadband. If so, add a new message
             // to the queue.
@@ -168,7 +175,7 @@ class PotMonitor
         }
     }
 
-    PotMonitor(const PotMonitor&) = delete;
+    PotMonitor(const PotMonitor&)            = delete;
     PotMonitor& operator=(const PotMonitor&) = delete;
 
     UiEventQueue* queue_;
@@ -176,6 +183,7 @@ class PotMonitor
     float         deadBand_;
     float         deadBandIdle_;
     uint16_t      timeout_;
+    bool          initialized_[numPots];
     float         lastValue_[numPots];
     uint16_t      timeoutCounterMs_[numPots];
     uint32_t      lastCallSysTime_;
