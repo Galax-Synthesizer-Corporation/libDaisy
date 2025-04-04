@@ -5,6 +5,16 @@
 
 namespace daisy
 {
+
+enum PotTrackingMode
+{
+    // Always post changes immediately
+    Immediate,
+    // Wait until value gets close to explicitly set
+    // "internal value" to begin tracking again
+    Pickup
+};
+
 /** @brief A potentiometer monitor that generates events in a UiEventQueue
  *  @author jelliesen
  *  @ingroup ui
@@ -73,9 +83,26 @@ class PotMonitor
             initialized_[i]      = false;
             lastValue_[i]        = 0.0;
             timeoutCounterMs_[i] = 0;
+            pickupTarget_[i]     = 0.0f;
+            tracking_[i]         = true;
         }
 
         lastCallSysTime_ = System::GetNow();
+    }
+
+    void SetTrackingMode(PotTrackingMode mode)
+    {
+        if(mode != tracking_mode_)
+        {
+            tracking_mode_ = mode;
+            if(mode == PotTrackingMode::Immediate)
+            {
+                for(uint32_t i = 0; i < numPots; i++)
+                {
+                    tracking_[i] = true;
+                }
+            }
+        }
     }
 
     /** Checks the value of each pot and generates messages for the UIEventQueue.
@@ -102,6 +129,14 @@ class PotMonitor
             return timeoutCounterMs_[potId] < timeout_;
     }
 
+    bool IsTracking(bool potId) const
+    {
+        if(potId >= numPots)
+            return false;
+        else
+            return tracking_[potId];
+    }
+
     /** For a given potentiometer, this will return the last value that was
      *  posted to the UiEventQueue.
      *  @param potId    The unique ID of the potentiometer (< numPots)
@@ -112,6 +147,24 @@ class PotMonitor
             return -1.0f;
         else
             return lastValue_[potId];
+    }
+
+    void SetPickupTarget(uint16_t pot_id, float value)
+    {
+        if(pot_id < numPots && tracking_mode_ == PotTrackingMode::Pickup)
+        {
+            float diff            = fabsf(lastValue_[pot_id] - value);
+            pickupTarget_[pot_id] = value;
+            tracking_[pot_id]     = diff <= deadBand_;
+
+            // if the pot is not tracking but it is currently moving,
+            // force it to stop and send message
+            if(!tracking_[pot_id] && IsMoving(pot_id))
+            {
+                timeoutCounterMs_[pot_id] = timeout_;
+                queue_->AddPotActivityChanged(pot_id, false);
+            }
+        }
     }
 
     /** Returns the BackendType that is used by the monitor. */
@@ -130,6 +183,9 @@ class PotMonitor
      */
     void ProcessPot(uint16_t id, float value, uint32_t timeDiffMs)
     {
+        bool tracking
+            = tracking_[id] || tracking_mode_ == PotTrackingMode::Immediate;
+
         // currently moving?
         if(!initialized_[id])
         {
@@ -137,7 +193,7 @@ class PotMonitor
             lastValue_[id]   = value;
             queue_->AddPotMoved(id, value);
         }
-        else if(timeoutCounterMs_[id] < timeout_)
+        else if(tracking && timeoutCounterMs_[id] < timeout_)
         {
             // check if pot has left the deadband. If so, add a new message
             // to the queue.
@@ -159,8 +215,8 @@ class PotMonitor
                 }
             }
         }
-        // not moving right now
-        else
+        // tracking but not moving right now
+        else if(tracking)
         {
             // check if pot has left the idle deadband. If so, add a new message
             // to the queue and restart the timeout
@@ -173,20 +229,41 @@ class PotMonitor
                 timeoutCounterMs_[id] = 0;
             }
         }
+        // not tracking
+        else
+        {
+            // Update tracking state
+            bool passthrough = (lastValue_[id] < pickupTarget_[id]
+                                && value > pickupTarget_[id])
+                               || (lastValue_[id] > pickupTarget_[id]
+                                   && value < pickupTarget_[id]);
+            tracking_[id]
+                = passthrough || fabsf(value - pickupTarget_[id]) <= deadBand_;
+            if(tracking_[id])
+            {
+                lastValue_[id] = value;
+                queue_->AddPotActivityChanged(id, true);
+                queue_->AddPotMoved(id, value);
+                timeoutCounterMs_[id] = 0;
+            }
+        }
     }
 
     PotMonitor(const PotMonitor&)            = delete;
     PotMonitor& operator=(const PotMonitor&) = delete;
 
-    UiEventQueue* queue_;
-    BackendType*  backend_;
-    float         deadBand_;
-    float         deadBandIdle_;
-    uint16_t      timeout_;
-    bool          initialized_[numPots];
-    float         lastValue_[numPots];
-    uint16_t      timeoutCounterMs_[numPots];
-    uint32_t      lastCallSysTime_;
+    UiEventQueue*   queue_;
+    BackendType*    backend_;
+    PotTrackingMode tracking_mode_;
+    float           deadBand_;
+    float           deadBandIdle_;
+    uint16_t        timeout_;
+    bool            initialized_[numPots];
+    float           lastValue_[numPots];
+    float           pickupTarget_[numPots];
+    bool            tracking_[numPots];
+    uint16_t        timeoutCounterMs_[numPots];
+    uint32_t        lastCallSysTime_;
 };
 
 } // namespace daisy
