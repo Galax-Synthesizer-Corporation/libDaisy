@@ -66,7 +66,7 @@
 // BOTH
 #define USBD_VID 1155
 #define USBD_LANGID_STRING 1033
-#define USBD_MANUFACTURER_STRING "Galax Synthesizer Corp."
+#define USBD_MANUFACTURER_STRING "GLX Audio Co. Ltd"
 // HS
 #define USBD_PID_HS 0x6762 // arbitrary PID for balsam - "GB" in ascii
 #define USBD_PRODUCT_STRING_HS "Balsam MPE"

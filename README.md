@@ -159,9 +159,9 @@ It does not provide a warranty of any kind.
 
 For the full license, read the [LICENSE](https://github.com/electro-smith/libdaisy/blob/master/LICENSE) file in the root directory.
 
-## Galax / Balsam Modifications
+## GLX / Balsam Modifications
 
-A list of modifications to be made to the upstream libDaisy, specifically for Galax Balsam.
+A list of modifications to be made to the upstream libDaisy, specifically for GLX Balsam.
 
 - [x] Add UART logger implementation
 - [ ] Update MIDI stack as necessary for sysex, clock input stuff
