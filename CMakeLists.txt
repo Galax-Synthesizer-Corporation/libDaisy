@@ -69,7 +69,6 @@ add_library(daisy STATIC
     ${MODULE_DIR}/hid/usb_host.cpp
     ${MODULE_DIR}/hid/usb_midi.cpp
     ${MODULE_DIR}/hid/usb.cpp
-    ${MODULE_DIR}/hid/wavplayer.cpp
     ${MODULE_DIR}/per/adc.cpp
     ${MODULE_DIR}/per/dac.cpp
     ${MODULE_DIR}/per/gpio.cpp
@@ -116,6 +115,11 @@ target_link_libraries(daisy PUBLIC
     FatFs
 )
 
+# There is a abstract `IReader` interface that allows that can be swappped out
+# for other i/o, but libDaisy assumes FatFS will always be present.
+# It may make sense for this to move to better facillitate testing, etc.
+target_compile_definitions(daisy PUBLIC FILEIO_ENABLE_FATFS_READER)
+
 target_compile_options(daisy PRIVATE
     -Wall
 
@@ -127,12 +131,14 @@ target_compile_options(daisy PRIVATE
     $<$<CXX_COMPILER_ID:GNU>:-Wno-missing-attributes>
 )
 
+
 set_target_properties(daisy PROPERTIES
     CXX_STANDARD 14
     CXX_STANDARD_REQUIRED
     C_STANDARD 11
     C_STANDARD_REQUIRED
 )
+
 
 # Don't add examples if we're being included in another project
 if(PROJECT_IS_TOP_LEVEL)
