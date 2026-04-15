@@ -121,8 +121,9 @@ extern "C"
             HAL_PCD_IRQHandler(&hpcd_USB_OTG_HS);
     }
 
-    // TODO: Add some real handling to the HardFaultHandler
-    void HardFault_Handler()
+    // Weak so application code can override with a serial-output diagnostic handler
+    // (e.g. balsam.cpp) while still providing a BKPT-based fallback for SWD debugging.
+    __attribute__((weak)) void HardFault_Handler()
     {
         // Grab an instance of the SCB so we can `p/x *scb` from the debugger
         SCB_Type* scb = SCB;
